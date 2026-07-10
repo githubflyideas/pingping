@@ -1,0 +1,8 @@
+# 編譯產物
+agent/sre-agent
+board/boss-board
+# 本地配置（含 API key / webhook，絕不入庫）
+config.yml
+# 運行時產物
+reports/
+workdir/
