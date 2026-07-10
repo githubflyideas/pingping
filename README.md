@@ -4,8 +4,7 @@
 > 系统自己去查、自己收窄假设，给出带时间对齐证据链的根因。
 
 **闭环 AI 根因诊断**：Claude 在 agentic 循环里自主决定调用哪个只读工具
-（假设 → 取证 → 收窄），底层是 5MB 单二进制采集器 + 飞行记录器 + pmdiff 式前后对比。
-方法论来自 Brendan Gregg（USE / TSA / 60秒排查）、PCP pmdiff 与 Google SRE。
+（假设 → 取证 → 收窄），底层是 5MB 单二进制采集器 + 飞行记录器 。
 
 ![管理层面板](docs/board_overview.png)
 *boss-board：红黄绿一眼看懂，下方直接滚动 AI 诊断结论*
