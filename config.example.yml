@@ -1,0 +1,11 @@
+anthropic:
+  # api_key: sk-ant-xxx      # 建議走環境變量 ANTHROPIC_API_KEY
+  model: claude-sonnet-4-6
+  max_steps: 15              # 單次診斷的取證步數預算
+
+vm:
+  url: http://127.0.0.1:8428
+
+feishu:
+  webhook_url: ""
+  secret: ""

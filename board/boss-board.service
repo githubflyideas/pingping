@@ -1,0 +1,12 @@
+[Unit]
+Description=boss-board (cluster health dashboard)
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/boss-board -vm http://127.0.0.1:8428 -hosts gw01,pve01,pve02 -reports /opt/aiops/reports -listen :8080
+Restart=always
+NoNewPrivileges=true
+MemoryMax=64M
+
+[Install]
+WantedBy=multi-user.target
