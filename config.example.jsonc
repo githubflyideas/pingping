@@ -1,0 +1,47 @@
+{
+  // pingd 配置示例 —— 复制为 pingd.jsonc 后修改
+  // 支持 // 和 /* */ 注释。所有字段都有合理默认值,最小配置只需 targets + webhooks。
+
+  "listen": "0.0.0.0:8517",     // Web 监听地址
+  "data_dir": "./data",          // 数据目录(JSONL 文本文件,可 grep 可 tar)
+  "web_base_url": "",            // 飞书卡片按钮的链接,如 http://10.0.0.5:8517,留空则卡片不带按钮
+
+  // 探测目标。type: icmp(默认)| tcp
+  "targets": [
+    { "name": "广州电信",  "type": "icmp", "host": "202.96.128.86" },
+    { "name": "上海联通",  "type": "icmp", "host": "210.22.70.3" },
+    { "name": "API 网关",  "type": "tcp",  "host": "10.0.0.5", "port": 443 }
+  ],
+
+  // 探测参数。默认值 = 每分钟一轮,每轮 20 包 —— 烟雾图的"烟"来自这 20 个样本
+  "probe": {
+    "interval_sec": 60,
+    "packets": 20,
+    "gap_ms": 50,
+    "timeout_ms": 1000
+  },
+
+  // 飞书自定义机器人 webhook(群设置 → 群机器人 → 自定义机器人)
+  // 四类消息都推到这里:告警(红)/ 恢复(绿)/ 周心跳(灰)/ 报告(蓝)
+  "webhooks": [
+    { "name": "运维群", "url": "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx" }
+  ],
+
+  // 告警规则(默认值经过校准,一般不需要动)
+  "alerts": {
+    "cooldown_min": 30,      // 同一告警重复推送冷却
+    "recover_min": 15,       // 持续正常多久才发恢复
+    "degrade_ratio": 1.5,    // P99 超基线 1.5 倍判劣化
+    "degrade_min_ms": 10,    // 且绝对增量 ≥ 10ms(防低延迟链路误报)
+    "burst_z": 3.5,          // 丢包突发的 robust z-score 阈值
+    "burst_alert_n": 3       // 30 分钟内突发 3 次升级为告警
+  },
+
+  // 周心跳:证明 pingd 自己活着(dead man's switch)。weekday: 0=周日 1=周一
+  "heartbeat": { "enabled": true, "weekday": 1, "hour": 10 },
+
+  // 日报:默认关。喜欢每天看一眼数字的人再打开
+  "daily_report": { "enabled": false, "hour": 10 },
+
+  "retention_days": 14       // 原始 JSONL 保留天数;日汇总永久保留
+}
