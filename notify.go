@@ -71,7 +71,7 @@ func (n *Notifier) SendHeartbeat() {
 	n.mu.Unlock()
 	body := fmt.Sprintf("本周期探测 **%d** 轮 · **%d** 条链路 · 告警 **%d** 次 · 已运行 %s\n收到这条消息 = 过去一周的安静确实是平安。",
 		total, len(n.store.Names()), alerts, fmtDur(time.Since(start)))
-	n.push(card("grey", "⚪ pingd 值守正常", body, n.webURL))
+	n.push(card("grey", "⚪ pingping 值守正常", body, n.webURL))
 }
 
 // SendReport 日报和手动拉取共用:结论先行,一目标一行。

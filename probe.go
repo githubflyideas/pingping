@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Round 是 pingd 的原子数据单元:一轮探测的全部原始样本。
+// Round 是 pingping 的原子数据单元:一轮探测的全部原始样本。
 // 存分布而不是均值 —— 这是整个项目的立项理由。
 type Round struct {
 	T  int64     `json:"t"`           // unix 秒
@@ -58,7 +58,7 @@ func probeLoop(t TargetCfg, p ProbeCfg, store *Store, det *Detector, stop chan s
 // 优先 SOCK_DGRAM(无需 root,需 sysctl ping_group_range 允许),
 // 失败回退 SOCK_RAW(需要 root 或 cap_net_raw)。
 
-const icmpMagic = "pingdv1!"
+const icmpMagic = "pingpingv1!"
 
 func icmpRound(host string, packets int, gap, timeout time.Duration) (Round, error) {
 	r := Round{T: time.Now().Unix(), S: packets}
