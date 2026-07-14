@@ -1,11 +1,19 @@
-# pingd
+# pingping
 
-> **监控告诉你挂没挂,pingd 告诉你活得好不好。**
+> **监控告诉你挂没挂,pingping 告诉你活得好不好。**
 > 用户说"卡",监控全绿 —— 故障藏在 RTT 分布和丢包突发里,而 up/down 类工具的数据模型在数学上就看不见它。
 
-pingd 是一个网络链路质量示波器:每轮发 20 个探测包,把**全部样本**画成烟雾图(Smokeping 的可视化语义),用 robust z-score 自动判定丢包突发和 P99 劣化,结论直接推进飞书。
+pingping 是一个网络链路质量示波器:每轮发 20 个探测包,把**全部样本**画成烟雾图(Smokeping 的可视化语义),用 robust z-score 自动判定丢包突发和 P99 劣化,结论直接推进飞书。
 
 A single-binary network link quality oscilloscope — modern Smokeping semantics, zero dependencies, air-gapped friendly, conclusions-first Feishu alerting.
+
+![广州电信 · 6h 窗口:一场 40 分钟的拥塞事件,烟雾散开、突发标为 ◆](docs/hero.png)
+
+| 24h 视图:昨晚的劣化窗口 + 晚高峰抖动 | 健康链路就是一条细亮线 |
+|---|---|
+| ![24h](docs/day.png) | ![clean](docs/clean.png) |
+
+*(截图为内置回放机制生成的演示数据)*
 
 ## 特性
 
@@ -19,13 +27,13 @@ A single-binary network link quality oscilloscope — modern Smokeping semantics
 
 ```bash
 # 1. 构建(或从 Releases 下载)
-go build -o pingd .
+go build -o pingping .
 
 # 2. 配置
-cp config.example.jsonc pingd.jsonc && vi pingd.jsonc   # 填 targets 和飞书 webhook
+cp config.example.jsonc pingping.jsonc && vi pingping.jsonc   # 填 targets 和飞书 webhook
 
 # 3. 运行
-./pingd -c pingd.jsonc
+./pingping -c pingping.jsonc
 # 浏览器打开 http://<host>:8517 看烟雾图
 ```
 
@@ -34,7 +42,7 @@ cp config.example.jsonc pingd.jsonc && vi pingd.jsonc   # 填 targets 和飞书 
 ```bash
 sysctl -w net.ipv4.ping_group_range="0 2147483647"
 # 或者给二进制授权 raw socket:
-setcap cap_net_raw+ep ./pingd
+setcap cap_net_raw+ep ./pingping
 ```
 
 ## 读图
@@ -72,7 +80,15 @@ data/
 
 ## 前身
 
-本项目继承自 [ai-sreagent](https://github.com/githubflyideas/ai-sreagent)(见 git history):robust z-score 异常检测、飞行记录器、结论先行的告警哲学来自那里 —— LLM 诊断循环被确定性规则引擎替代,三组件架构被压缩成一个二进制。同门项目:[deltascope](https://github.com/githubflyideas/deltascope)(air-gapped 性能回归对比)。
+本项目继承自 ai-sreagent(完整代码在本仓库 git history 中):robust z-score 异常检测、飞行记录器、结论先行的告警哲学来自那里 —— LLM 诊断循环被确定性规则引擎替代,三组件架构被压缩成一个二进制。同门项目:[deltascope](https://github.com/githubflyideas/deltascope)(air-gapped 性能回归对比)。
+
+## 赞助
+
+pingping 的目标是"不赔钱地存在"。如果它帮你抓到过一次"监控全绿但就是卡"的元凶:
+
+- ⭐ Star 是最好的支持
+- [GitHub Sponsors](https://github.com/sponsors/githubflyideas) · 爱发电(筹备中)
+- **赞助位虚位以待** —— README 此处与推送卡片底部各有一个固定展示位(内容将明确标注"推广"),适合 VPS / IDC / 网络服务商,联系方式见 GitHub 主页
 
 ## License
 

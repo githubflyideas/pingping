@@ -1,5 +1,5 @@
-// pingd — 网络链路质量示波器
-// 监控告诉你挂没挂,pingd 告诉你活得好不好。
+// pingping — 网络链路质量示波器
+// 监控告诉你挂没挂,pingping 告诉你活得好不好。
 package main
 
 import (
@@ -15,12 +15,12 @@ import (
 var version = "dev"
 
 func main() {
-	cfgPath := flag.String("c", "pingd.jsonc", "配置文件路径 (JSONC)")
+	cfgPath := flag.String("c", "pingping.jsonc", "配置文件路径 (JSONC)")
 	showVer := flag.Bool("version", false, "打印版本")
 	flag.Parse()
 
 	if *showVer {
-		fmt.Println("pingd", version)
+		fmt.Println("pingping", version)
 		return
 	}
 
@@ -51,14 +51,14 @@ func main() {
 	// 分钟级调度器:日汇总、保留期清理、日报、周心跳
 	go scheduler(cfg, store, notifier, stop)
 
-	log.Printf("pingd %s 启动 · %d 个目标 · 监听 %s · 数据目录 %s",
+	log.Printf("pingping %s 启动 · %d 个目标 · 监听 %s · 数据目录 %s",
 		version, len(cfg.Targets), cfg.Listen, cfg.DataDir)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
 	close(stop)
-	log.Println("pingd 退出")
+	log.Println("pingping 退出")
 }
 
 // scheduler 每分钟醒一次,对表干活。刻意不用 cron 库:需求就四条。

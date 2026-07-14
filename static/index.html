@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>pingd · 链路质量示波器</title>
+<title>pingping · 链路质量示波器</title>
 <script src="/static/echarts.min.js"></script>
 <style>
   /* 主题:老式示波器。荧光迹线是唯一的主角,其余一切保持仪器面板的沉默。 */
@@ -78,8 +78,8 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="mark"><b>pingd</b> ●</div>
-    <div class="tagline">链路质量示波器 · 监控告诉你挂没挂,pingd 告诉你活得好不好</div>
+    <div class="mark"><b>pingping</b> ●</div>
+    <div class="tagline">链路质量示波器 · 监控告诉你挂没挂,pingping 告诉你活得好不好</div>
     <div class="sp"></div>
     <button class="push" id="push">推送实时报告到飞书</button>
   </header>
@@ -114,6 +114,12 @@
 <script>
 const $ = id => document.getElementById(id);
 let targets = [], current = null, minutes = 360;
+
+// 深链接:/#t=广州电信&m=1440 —— 可以把"这条链路这个窗口"直接发给同事
+const hp = new URLSearchParams(location.hash.slice(1));
+if (hp.get('m') && [60,360,1440].includes(+hp.get('m'))) minutes = +hp.get('m');
+if (hp.get('t')) current = hp.get('t');
+document.querySelectorAll('.rng button').forEach(b => b.classList.toggle('on', +b.dataset.m === minutes));
 const chart = echarts.init($('chart'), null, { renderer: 'canvas' });
 
 async function loadTargets() {

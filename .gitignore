@@ -1,7 +1,7 @@
-/pingd
+/pingping
 /data/
 /testdata/
-pingd.jsonc
+pingping.jsonc
 test.jsonc
 *.log
 nohup.out
