@@ -30,8 +30,14 @@ type Notifier struct {
 	alertCnt int
 }
 
+// note 是一条与投递格式无关的消息:每个 hook 按自己的 format 渲染。
+type note struct {
+	kind, color, title, body, meta string
+	event                          *AlertEvent // 告警/恢复带结构化事件,json 格式的收端可编程消费
+}
+
 type hook struct {
-	name, url, secret string
+	name, url, secret, format string
 	kinds             map[string]bool // nil = 全收
 	fails             int
 	skipUntil         time.Time
@@ -50,7 +56,7 @@ type AlertEvent struct {
 func NewNotifier(cfg *Config) *Notifier {
 	n := &Notifier{webURL: cfg.WebBaseURL, instance: cfg.Instance}
 	for _, w := range cfg.Webhooks {
-		h := &hook{name: w.Name, url: w.URL, secret: w.Secret}
+		h := &hook{name: w.Name, url: w.URL, secret: w.Secret, format: w.Format}
 		if len(w.Kinds) > 0 {
 			h.kinds = map[string]bool{}
 			for _, k := range w.Kinds {
@@ -76,13 +82,14 @@ func (n *Notifier) SendAlert(ev AlertEvent) {
 	if ev.Bursts > 0 {
 		lines = append(lines, fmt.Sprintf("近 30 分钟丢包突发 **%d** 次,最差单轮丢包 **%.0f%%**", ev.Bursts, ev.WorstLoss))
 	}
-	n.push("alert", card("red", "🔴 链路异常 · "+ev.Target,
-		"**"+ev.Kind+"**\n"+join(lines), n.meta(ev, false), n.webURL))
+	n.push(note{kind: "alert", color: "red", title: "🔴 链路异常 · " + ev.Target,
+		body: "**" + ev.Kind + "**\n" + join(lines), meta: n.meta(ev, false), event: &ev})
 }
 
 func (n *Notifier) SendRecovery(ev AlertEvent) {
 	body := fmt.Sprintf("**%s** 已恢复", ev.Kind)
-	n.push("recovery", card("green", "🟢 链路恢复 · "+ev.Target, body, n.meta(ev, true), n.webURL))
+	n.push(note{kind: "recovery", color: "green", title: "🟢 链路恢复 · " + ev.Target,
+		body: body, meta: n.meta(ev, true), event: &ev})
 }
 
 // meta 组装卡片的元信息区:来源 · 目标 · 时间 · 持续 · 自定义字段。
@@ -127,7 +134,7 @@ func (n *Notifier) SendHeartbeat() {
 	body := fmt.Sprintf("本周期探测 **%d** 轮 · **%d** 条链路 · 告警 **%d** 次 · 已运行 %s\n收到这条消息 = 过去一周的安静确实是平安。",
 		total, len(n.store.Names()), alerts, fmtDur(time.Since(start)))
 	meta := fmt.Sprintf("来源:%s · %s", n.instance, time.Now().Format("2006-01-02 15:04"))
-	n.push("heartbeat", card("grey", "⚪ pingping 值守正常", body, meta, n.webURL))
+	n.push(note{kind: "heartbeat", color: "grey", title: "⚪ pingping 值守正常", body: body, meta: meta})
 }
 
 // SendReport 日报(kind=daily)和手动拉取(kind=manual)共用:结论先行,一目标一行。
@@ -147,10 +154,32 @@ func (n *Notifier) SendReport(title, kind string) {
 		head = fmt.Sprintf("**%d** 条链路,**%d** 条异常 ⚠️", len(lines), bad)
 	}
 	meta := fmt.Sprintf("来源:%s · %s", n.instance, time.Now().Format("2006-01-02 15:04"))
-	n.push(kind, card("blue", title, head+"\n"+join(lines), meta, n.webURL))
+	n.push(note{kind: kind, color: "blue", title: title, body: head + "\n" + join(lines), meta: meta})
 }
 
 // ---- 飞书 interactive card ----
+
+func (nt note) feishuMsg(webURL string) map[string]any {
+	return card(nt.color, nt.title, nt.body, nt.meta, webURL)
+}
+
+// rawMsg 是通用 JSON 事件:钉钉/Slack/自研平台自行转格式接入。
+func (nt note) rawMsg(instance string) map[string]any {
+	m := map[string]any{
+		"source": "pingping", "instance": instance, "kind": nt.kind,
+		"title": nt.title, "body": nt.body, "meta": nt.meta,
+		"time": time.Now().Unix(),
+	}
+	if nt.event != nil {
+		m["event"] = map[string]any{
+			"target": nt.event.Target, "host": nt.event.Host, "type": nt.event.Kind,
+			"p99_base_ms": nt.event.P99Base, "p99_cur_ms": nt.event.P99Cur,
+			"bursts_30m": nt.event.Bursts, "worst_loss_pct": nt.event.WorstLoss,
+			"since": nt.event.Since, "extra": nt.event.Extra,
+		}
+	}
+	return m
+}
 
 func card(color, title, mdBody, mdMeta, webURL string) map[string]any {
 	elements := []any{
@@ -187,23 +216,25 @@ func feishuSign(secret string, ts int64) string {
 }
 
 // push 按 kinds 路由到各 webhook:3 次重试,连续失败 10 次退避 1 小时(死链保护)。
-func (n *Notifier) push(kind string, msg map[string]any) {
+func (n *Notifier) push(nt note) {
 	for _, h := range n.hooks {
-		if h.kinds != nil && !h.kinds[kind] {
+		if h.kinds != nil && !h.kinds[nt.kind] {
 			continue
 		}
 		go func(h *hook) {
 			if time.Now().Before(h.skipUntil) {
 				return
 			}
-			payload := make(map[string]any, len(msg)+2)
-			for k, v := range msg {
-				payload[k] = v
-			}
-			if h.secret != "" {
-				ts := time.Now().Unix()
-				payload["timestamp"] = strconv.FormatInt(ts, 10)
-				payload["sign"] = feishuSign(h.secret, ts)
+			var payload map[string]any
+			if h.format == "json" {
+				payload = nt.rawMsg(n.instance)
+			} else {
+				payload = nt.feishuMsg(n.webURL)
+				if h.secret != "" {
+					ts := time.Now().Unix()
+					payload["timestamp"] = strconv.FormatInt(ts, 10)
+					payload["sign"] = feishuSign(h.secret, ts)
+				}
 			}
 			body, _ := json.Marshal(payload)
 			var lastErr error

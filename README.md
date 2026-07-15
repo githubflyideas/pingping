@@ -8,7 +8,7 @@ Data and logs rotate automatically, so you’ll never have to worry about runnin
 Run ./pingping, go grab a cup of coffee, and head over to http://localhost:8517 to see your first puff of network smoke!
 
 
-![电信 · 6h 窗口:一场 40 分钟的拥塞事件,烟雾散开、突发标为 ◆](docs/hero.png)
+![Guangzhou Telecom · 6h window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero.png)
 
 
 open [Releases](https://github.com/githubflyideas/pingping/releases) 

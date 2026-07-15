@@ -45,7 +45,9 @@
     { "name": "运维群", "url": "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx",
       "secret": "", "kinds": ["alert", "recovery", "heartbeat"] },
     { "name": "领导群", "url": "https://open.feishu.cn/open-apis/bot/v2/hook/yyyyyyyy",
-      "kinds": ["daily"] }
+      "kinds": ["daily"] },
+    { "name": "自研平台", "url": "https://your-platform/hook",
+      "format": "json" }   // 裸 JSON 事件(source/kind/title/body/event),任意系统可接
   ],
 
   // 告警基准阈值(sensitivity 三档在此基础上缩放,一般不需要动)
