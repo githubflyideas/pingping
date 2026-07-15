@@ -1,20 +1,18 @@
->A single-binary network link quality oscilloscope — modern Smokeping semantics, zero dependencies, air-gapped friendly, conclusions-first Feishu alerting.
-
+>A lightweight network link quality plotter.
+While it may not be as heavy-duty or mature as Smokeping, it is exceptionally lightweight. It is a single binary file—just copy and run. No Docker, no root required, and zero database dependencies.
+Data and logs rotate automatically, so you’ll never have to worry about running out of disk space. You can edit your monitoring targets with any text editor you like (or even a simple echo one-liner).
+Run ./pingping, go grab a cup of coffee, and head over to http://localhost:8517 to see your first puff of network smoke!
 ![电信 · 6h 窗口:一场 40 分钟的拥塞事件,烟雾散开、突发标为 ◆](docs/hero.png)
 
 
-从 [Releases](https://github.com/githubflyideas/pingping/releases) 
+open [Releases](https://github.com/githubflyideas/pingping/releases) 
 ```bash
 tar xzf pingping-v*-linux-amd64.tar.gz && cd pingping-*/
 ./pingping
 ```
 
-🇬🇧 英语 (English)
-pingping: A lightweight network link quality plotter.
-While it may not be as heavy-duty or mature as Smokeping, it is exceptionally lightweight. It is a single binary file—just copy and run. No Docker, no root required, and zero database dependencies.
-Data and logs rotate automatically, so you’ll never have to worry about running out of disk space. You can edit your monitoring targets with any text editor you like (or even a simple echo one-liner).
-Run ./pingping, go grab a cup of coffee, and head over to http://localhost:8517 to see your first puff of network smoke!
-2. 🇹🇼 繁体中文 (Taiwan - 台灣習慣用語)
+pingping: 
+ 🇹🇼 繁体中文 (Taiwan - 台灣習慣用語)
 pingping：一個輕量級的網路鏈路品質繪圖小工具。
 雖然沒有 Smokeping 那般強大與成熟，但它極致輕量。單一執行檔（Single Binary），複製即用。免 Docker、免 Root 權限，且無資料庫依賴。
 數據與日誌會自動輪轉（Rotate），永遠不用擔心塞爆硬碟。你可以用任何喜歡的編輯器（甚至只要一行 echo 指令）直接修改監控目標。
