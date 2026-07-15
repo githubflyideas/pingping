@@ -14,7 +14,7 @@ tar xzf pingping-v*-linux-amd64.tar.gz && cd pingping-*/
 ```
 
 
- 🇹🇼 繁体中文 (Taiwan - 台灣習慣用語)
+ 🇹🇼 繁体中文 
 pingping：一個輕量級的網路鏈路品質繪圖小工具。
 雖然沒有 Smokeping 那般強大與成熟，但它極致輕量。單一執行檔（Single Binary），複製即用。免 Docker、免 Root 權限，且無資料庫依賴。
 數據與日誌會自動輪轉（Rotate），永遠不用擔心塞爆硬碟。你可以用任何喜歡的編輯器（甚至只要一行 echo 指令）直接修改監控目標。
