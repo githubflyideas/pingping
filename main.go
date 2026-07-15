@@ -14,6 +14,31 @@ import (
 
 var version = "dev"
 
+// demoConfig 是首次运行自动生成的演示配置。fast 档让第一屏的烟雾几分钟内成形。
+const demoConfig = `{
+  // pingping 演示配置 —— 首次运行自动生成,按需修改后重启生效
+  // 完整字段说明见仓库内 config.example.jsonc
+  "listen": "0.0.0.0:8517",
+  "targets": [
+    { "name": "演示 · 百度", "type": "icmp", "host": "www.baidu.com", "pace": "fast" }
+  ]
+  // 飞书推送:去掉下面的注释,填入你的群机器人 webhook
+  //,"webhooks": [
+  //  { "name": "运维群", "url": "https://open.feishu.cn/open-apis/bot/v2/hook/xxxx" }
+  //]
+}
+`
+
+// portOf 从监听地址提取给人看的端口后缀。
+func portOf(listen string) string {
+	for i := len(listen) - 1; i >= 0; i-- {
+		if listen[i] == ':' {
+			return listen[i:]
+		}
+	}
+	return ":8517"
+}
+
 func main() {
 	cfgPath := flag.String("c", "pingping.jsonc", "配置文件路径 (JSONC)")
 	showVer := flag.Bool("version", false, "打印版本")
@@ -26,7 +51,17 @@ func main() {
 
 	cfg, err := LoadConfig(*cfgPath)
 	if err != nil {
-		log.Fatalf("配置加载失败: %v", err)
+		// 零配置开箱:找不到配置文件时自动生成演示配置(探测 www.baidu.com),
+		// 下载解压、执行、开浏览器,三十秒看到第一缕烟。
+		if os.IsNotExist(err) {
+			if werr := os.WriteFile(*cfgPath, []byte(demoConfig), 0o644); werr == nil {
+				log.Printf("未找到配置文件,已生成演示配置 %s(探测 www.baidu.com),按需修改后重启生效", *cfgPath)
+				cfg, err = LoadConfig(*cfgPath)
+			}
+		}
+		if err != nil {
+			log.Fatalf("配置加载失败: %v", err)
+		}
 	}
 
 	store, err := NewStore(cfg.DataDir, cfg.Targets)
@@ -53,6 +88,7 @@ func main() {
 
 	log.Printf("pingping %s 启动 · %d 个目标 · 监听 %s · 数据目录 %s",
 		version, len(cfg.Targets), cfg.Listen, cfg.DataDir)
+	log.Printf("➜  打开浏览器访问 http://localhost%s 查看烟雾图", portOf(cfg.Listen))
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

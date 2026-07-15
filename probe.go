@@ -140,14 +140,14 @@ func collect(fd int, raw bool, id int, nonce [4]byte, sendAt []time.Time, got []
 		if remain <= 0 {
 			return
 		}
-		tvUsec := remain.Microseconds()
-		if tvUsec > 50000 {
-			tvUsec = 50000 // 50ms 一跳,保证按时退出
+		wait := remain
+		if wait > 50*time.Millisecond {
+			wait = 50 * time.Millisecond // 50ms 一跳,保证按时退出
 		}
-		if tvUsec < 1000 {
-			tvUsec = 1000
+		if wait < time.Millisecond {
+			wait = time.Millisecond
 		}
-		tv := syscall.Timeval{Sec: 0, Usec: tvUsec}
+		tv := syscall.NsecToTimeval(wait.Nanoseconds()) // 可移植:linux/darwin 的 Timeval 字段类型不同
 		syscall.SetsockoptTimeval(fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv)
 		n, _, err := syscall.Recvfrom(fd, buf, 0)
 		now := time.Now()
