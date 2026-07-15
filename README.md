@@ -38,7 +38,9 @@ echo "59.43.247.1 香港CN2 pace=fast sensitivity=strict 负责人=张三" >> ta
 echo "10.0.0.5:443 API网关" >> targets/tcp.list
 ```
 
-行格式:`host[:port] [名称] [pace=fast|slow] [sensitivity=strict|relaxed] [interval=秒] [alerts=false]`,其余 `k=v` 自动成为自定义字段进告警卡片。飞书 webhook 在 `pingping.jsonc` 里配置。Web 界面可按 PING/TCP 筛选目标。
+行格式:`host[:port] [名称] [pace=fast|slow] [sensitivity=strict|relaxed] [interval=秒] [alerts=false]`,其余 `k=v` 自动成为自定义字段进告警卡片。飞书 webhook 在 `pingping.jsonc` 里配置。
+
+Web 界面:烟雾图 / **主机总览**(按类型、名称、地址、间隔点表头排序)/ **通知配置**(webhook 展示,URL 自动脱敏)三个标签页,支持按 PING/TCP 筛选,界面语言可选中英日韩西德六种。配置 `"web_password"` 一行即可启用登录(留空不启用)。
 
 也可以源码构建:`go build -o pingping .`(无任何第三方依赖)。
 

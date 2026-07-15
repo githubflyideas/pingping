@@ -6,6 +6,8 @@
   "data_dir": "./data",          // 数据目录(JSONL 文本文件,可 grep 可 tar)
   "web_base_url": "",            // 飞书卡片按钮的链接,如 http://10.0.0.5:8517,留空则卡片不带按钮
   "instance": "",                // 告警来源标识,多实例部署时区分是谁在叫;不填默认取主机名
+  "web_user": "admin",           // Web 登录用户名
+  "web_password": "",            // Web 登录密码(明文);留空 = 不启用登录
   "extra": { "环境": "生产" },   // 全局自定义字段,渲染进所有告警/恢复卡片
 
   // 目标列表目录:推荐用 targets/ping.list 和 targets/tcp.list 管理目标 —— 一行一个,加监控只需
