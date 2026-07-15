@@ -17,6 +17,8 @@ type Config struct {
 	WebBaseURL    string            `json:"web_base_url"` // 飞书卡片按钮链接,留空则不带按钮
 	Instance      string            `json:"instance"`     // 告警来源标识,不填默认取主机名
 	TargetsDir    string            `json:"targets_dir"`  // 目标列表目录(ping.list / tcp.list),默认 ./targets
+	WebUser       string            `json:"web_user"`     // 登录用户名,默认 admin
+	WebPassword   string            `json:"web_password"` // 登录密码(明文);留空 = 不启用登录
 	Extra         map[string]string `json:"extra"`        // 全局自定义字段,进所有告警/恢复卡片
 	Targets       []TargetCfg  `json:"targets"`
 	Probe         ProbeCfg     `json:"probe"`
@@ -225,6 +227,9 @@ func LoadConfig(path string) (*Config, error) {
 				return nil, fmt.Errorf("webhook %q 的 kinds 含无效值 %q", w.Name, k)
 			}
 		}
+	}
+	if cfg.WebUser == "" {
+		cfg.WebUser = "admin"
 	}
 	if cfg.Instance == "" {
 		if hn, err := os.Hostname(); err == nil {

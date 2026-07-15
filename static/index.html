@@ -5,53 +5,53 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>pingping · 链路质量示波器</title>
 <script src="/static/echarts.min.js"></script>
+<script src="/static/i18n.js"></script>
 <style>
   /* 主题:老式示波器。荧光迹线是唯一的主角,其余一切保持仪器面板的沉默。 */
   :root {
-    --bg: #0a0c0e;         /* 机壳 */
-    --bezel: #14181c;      /* 面板 */
-    --screen: #060808;     /* 荧幕 */
-    --phos: #7ce38b;       /* P1 荧光粉 */
-    --phos-dim: rgba(124,227,139,.16);
-    --grid: #10281a;
-    --amber: #e8b44a;      /* 档位旋钮 */
-    --alert: #ff5c57;
-    --ink: #c7d0c9;
-    --dim: #5c6b60;
+    --bg: #0a0c0e; --bezel: #14181c; --screen: #060808;
+    --phos: #7ce38b; --phos-dim: rgba(124,227,139,.16); --grid: #10281a;
+    --amber: #e8b44a; --alert: #ff5c57; --ink: #c7d0c9; --dim: #5c6b60;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Noto Sans Mono", monospace;
   }
   * { box-sizing: border-box; margin: 0; }
   body { background: var(--bg); color: var(--ink); font-family: var(--mono); padding: 20px; }
   .wrap { max-width: 1100px; margin: 0 auto; }
 
-  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
   .mark { font-size: 22px; letter-spacing: .04em; color: var(--phos); }
   .mark b { font-weight: 700; }
-  .tagline { color: var(--dim); font-size: 12px; }
+  .tagline { color: var(--dim); font-size: 12px; max-width: 420px; }
   header .sp { flex: 1; }
-  button.push {
+  select.lang { background: var(--bezel); border: 1px solid #1e242a; color: var(--dim);
+    font: inherit; font-size: 11px; padding: 5px 6px; border-radius: 3px; }
+  button.push, button.ghost {
     background: none; border: 1px solid var(--amber); color: var(--amber);
     font: inherit; font-size: 12px; padding: 6px 14px; border-radius: 3px; cursor: pointer;
   }
+  button.ghost { border-color: #1e242a; color: var(--dim); }
   button.push:hover { background: rgba(232,180,74,.12); }
-  button.push:focus-visible, .pill:focus-visible, .rng button:focus-visible { outline: 1px dashed var(--amber); outline-offset: 2px; }
+  button.ghost:hover { border-color: var(--dim); }
 
-  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-  .pill {
-    background: var(--bezel); border: 1px solid #1e242a; color: var(--ink);
+  .tabs { display: flex; gap: 0; border: 1px solid #1e242a; border-radius: 3px; overflow: hidden;
+          width: max-content; margin-bottom: 14px; }
+  .tabs button { background: none; border: none; border-right: 1px solid #1e242a; color: var(--dim);
+    font: inherit; font-size: 12px; padding: 7px 18px; cursor: pointer; }
+  .tabs button:last-child { border-right: none; }
+  .tabs button.on { color: var(--phos); background: rgba(124,227,139,.07); }
+
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { background: var(--bezel); border: 1px solid #1e242a; color: var(--ink);
     font: inherit; font-size: 12px; padding: 6px 12px; border-radius: 3px; cursor: pointer;
-    display: flex; align-items: center; gap: 7px;
-  }
+    display: flex; align-items: center; gap: 7px; }
   .pill.on { border-color: var(--phos); }
   .led { width: 7px; height: 7px; border-radius: 50%; background: var(--phos); box-shadow: 0 0 5px var(--phos); }
   .led.bad { background: var(--alert); box-shadow: 0 0 6px var(--alert); animation: blink 1.2s infinite; }
   @media (prefers-reduced-motion: reduce) { .led.bad { animation: none; } }
   @keyframes blink { 50% { opacity: .35; } }
 
-  .scope {
-    background: var(--bezel); border-radius: 6px; padding: 14px;
-    border: 1px solid #1e242a; box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
-  }
+  .scope { background: var(--bezel); border-radius: 6px; padding: 14px;
+    border: 1px solid #1e242a; box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
   #chart { height: 420px; background: var(--screen); border-radius: 3px; }
 
   .console { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-top: 12px; padding: 0 4px; }
@@ -60,11 +60,9 @@
   .readout .v.bad { color: var(--alert); }
   .readout .k { font-size: 10px; color: var(--dim); letter-spacing: .14em; text-transform: uppercase; margin-top: 2px; }
   .console .sp { flex: 1; }
-  .rng { display: flex; gap: 0; border: 1px solid #1e242a; border-radius: 3px; overflow: hidden; }
-  .rng button {
-    background: none; border: none; color: var(--dim); font: inherit; font-size: 12px;
-    padding: 6px 14px; cursor: pointer; border-right: 1px solid #1e242a;
-  }
+  .rng { display: flex; border: 1px solid #1e242a; border-radius: 3px; overflow: hidden; }
+  .rng button { background: none; border: none; color: var(--dim); font: inherit; font-size: 12px;
+    padding: 6px 14px; cursor: pointer; border-right: 1px solid #1e242a; }
   .rng button:last-child { border-right: none; }
   .rng button.on { color: var(--amber); background: rgba(232,180,74,.09); }
   .rng .lbl { font-size: 10px; color: var(--dim); align-self: center; padding: 0 8px; letter-spacing: .14em; }
@@ -73,61 +71,106 @@
   .foot .conc { color: var(--ink); }
   .toast { position: fixed; right: 20px; bottom: 20px; background: var(--bezel); border: 1px solid var(--phos);
            color: var(--phos); padding: 10px 16px; border-radius: 3px; font-size: 12px; display: none; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--bezel); border: 1px solid #1e242a;
+          border-radius: 6px; overflow: hidden; font-size: 12px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #10141a; }
+  th { color: var(--dim); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+       cursor: pointer; user-select: none; white-space: nowrap; }
+  th:hover { color: var(--ink); }
+  th .dir { color: var(--amber); }
+  tr:last-child td { border-bottom: none; }
+  td.mono { color: var(--phos); }
+  .st-ok { color: var(--phos); } .st-bad { color: var(--alert); } .st-obs { color: var(--dim); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="mark"><b>pingping</b> ●</div>
-    <div class="tagline">链路质量示波器 · 监控告诉你挂没挂,pingping 告诉你活得好不好</div>
+    <div class="tagline" id="tagline"></div>
     <div class="sp"></div>
-    <button class="push" id="push">推送实时报告到飞书</button>
+    <select class="lang" id="lang"></select>
+    <button class="push" id="push"></button>
+    <button class="ghost" id="logout" style="display:none"></button>
   </header>
 
-  <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap">
-    <div class="rng" id="tfilter" style="display:none">
-      <button data-t="all" class="on">全部</button>
-      <button data-t="icmp">PING</button>
-      <button data-t="tcp">TCP</button>
-    </div>
-    <div class="pills" id="pills" style="margin-bottom:0"></div>
+  <div class="tabs" id="tabs">
+    <button data-v="scope" class="on"></button>
+    <button data-v="hosts"></button>
+    <button data-v="hooks"></button>
   </div>
 
-  <div class="scope">
-    <div id="chart"></div>
-    <div class="console">
-      <div class="readout"><div class="v" id="p50">–</div><div class="k">P50 ms</div></div>
-      <div class="readout"><div class="v" id="p90">–</div><div class="k">P90 ms</div></div>
-      <div class="readout"><div class="v" id="p99">–</div><div class="k">P99 ms</div></div>
-      <div class="readout"><div class="v" id="loss">–</div><div class="k">丢包 %</div></div>
-      <div class="readout"><div class="v" id="bursts">–</div><div class="k">突发·窗口内</div></div>
-      <div class="sp"></div>
-      <div class="rng">
-        <span class="lbl">TIME/DIV</span>
-        <button data-m="60">1h</button>
-        <button data-m="360" class="on">6h</button>
-        <button data-m="1440">24h</button>
+  <div id="view-scope">
+    <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap">
+      <div class="rng" id="tfilter" style="display:none">
+        <button data-t="all" class="on"></button>
+        <button data-t="icmp">PING</button>
+        <button data-t="tcp">TCP</button>
+      </div>
+      <div class="pills" id="pills"></div>
+    </div>
+    <div class="scope">
+      <div id="chart"></div>
+      <div class="console">
+        <div class="readout"><div class="v" id="p50">–</div><div class="k">P50 ms</div></div>
+        <div class="readout"><div class="v" id="p90">–</div><div class="k">P90 ms</div></div>
+        <div class="readout"><div class="v" id="p99">–</div><div class="k">P99 ms</div></div>
+        <div class="readout"><div class="v" id="loss">–</div><div class="k" id="lossLbl"></div></div>
+        <div class="readout"><div class="v" id="bursts">–</div><div class="k" id="burstLbl"></div></div>
+        <div class="sp"></div>
+        <div class="rng">
+          <span class="lbl">TIME/DIV</span>
+          <button data-m="60">1h</button>
+          <button data-m="360" class="on">6h</button>
+          <button data-m="1440">24h</button>
+        </div>
       </div>
     </div>
+    <div class="foot"><span class="conc" id="conclusion"></span><span id="legend"></span></div>
   </div>
 
-  <div class="foot">
-    <span class="conc" id="conclusion"></span>
-    <span>亮线 = 每轮中位数 · 烟雾 = 全部样本 · 红柱 = 丢包% · ◆ = 突发</span>
+  <div id="view-hosts" style="display:none">
+    <table>
+      <thead><tr id="hostsHead"></tr></thead>
+      <tbody id="hostsBody"></tbody>
+    </table>
+  </div>
+
+  <div id="view-hooks" style="display:none">
+    <table>
+      <thead><tr id="hooksHead"></tr></thead>
+      <tbody id="hooksBody"></tbody>
+    </table>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
 const $ = id => document.getElementById(id);
-let targets = [], current = null, minutes = 360, typeFilter = 'all';
+let targets = [], hooks = null, current = null, minutes = 360, typeFilter = 'all';
+let view = 'scope', sortKey = 'name', sortDir = 1;
+const chart = echarts.init($('chart'), null, { renderer: 'canvas' });
 
-// 深链接:/#t=广州电信&m=1440 —— 可以把"这条链路这个窗口"直接发给同事
+// 深链接:/#t=广州电信&m=1440
 const hp = new URLSearchParams(location.hash.slice(1));
 if (hp.get('m') && [60,360,1440].includes(+hp.get('m'))) minutes = +hp.get('m');
 if (hp.get('t')) current = hp.get('t');
-document.querySelectorAll('.rng button').forEach(b => b.classList.toggle('on', +b.dataset.m === minutes));
-const chart = echarts.init($('chart'), null, { renderer: 'canvas' });
+
+function applyI18n() {
+  $('tagline').textContent = T('tagline');
+  $('push').textContent = T('push');
+  $('logout').textContent = T('logout');
+  $('lossLbl').textContent = T('lossLbl');
+  $('burstLbl').textContent = T('burstLbl');
+  $('legend').textContent = T('legend');
+  const tabBtns = document.querySelectorAll('#tabs button');
+  tabBtns[0].textContent = T('tabScope');
+  tabBtns[1].textContent = T('tabHosts');
+  tabBtns[2].textContent = T('tabHooks');
+  document.querySelector('#tfilter [data-t=all]').textContent = T('filterAll');
+  render();
+}
 
 async function loadTargets() {
   targets = await (await fetch('/api/targets')).json() || [];
@@ -145,13 +188,10 @@ async function loadTargets() {
   if ((!current || !visible.some(t => t.name === current)) && visible.length) current = visible[0].name;
 }
 
-async function render() {
-  await loadTargets();
+async function renderScope() {
   const t = targets.find(x => x.name === current);
   if (!t) return;
   const rounds = await (await fetch(`/api/series?target=${encodeURIComponent(current)}&minutes=${minutes}`)).json() || [];
-
-  // 烟雾:全部样本;迹线:每轮中位数;红柱:丢包%;突发:菱形标记
   const smoke = [], median = [], lossBars = [], burstPts = [];
   let pool = [], sent = 0, recv = 0, bursts = 0;
   rounds.forEach(r => {
@@ -162,14 +202,11 @@ async function render() {
     if (ms.length) {
       const c = [...ms].sort((a, b) => a - b);
       median.push([ts, c[Math.floor(c.length / 2)]]);
-    } else {
-      median.push([ts, null]);
-    }
+    } else median.push([ts, null]);
     const lp = r.s ? (r.s - r.r) / r.s * 100 : 0;
     lossBars.push([ts, lp]);
     if (r.b) { bursts++; burstPts.push([ts, lp]); }
   });
-
   pool.sort((a, b) => a - b);
   const q = p => pool.length ? pool[Math.floor((pool.length - 1) * p)] : 0;
   $('p50').textContent = pool.length ? q(.5).toFixed(1) : '–';
@@ -181,11 +218,10 @@ async function render() {
   $('bursts').textContent = bursts;
   $('bursts').className = 'v' + (bursts ? ' bad' : '');
   $('conclusion').textContent = t.status.alert
-    ? `🔴 ${t.name}:${t.status.kind} —— 处理中` 
-    : `🟢 ${t.name}:近 24h P99 ${t.last_24h.p99.toFixed(1)} ms · 丢包 ${t.last_24h.loss_pct.toFixed(2)}% · 突发 ${t.last_24h.bursts} 次`;
-
-  const css = getComputedStyle(document.documentElement);
-  const phos = css.getPropertyValue('--phos').trim();
+    ? T('concAlert', { name: t.name, kind: t.status.kind })
+    : T('concOK', { name: t.name, p99: t.last_24h.p99.toFixed(1),
+        loss: t.last_24h.loss_pct.toFixed(2), bursts: t.last_24h.bursts });
+  const phos = getComputedStyle(document.documentElement).getPropertyValue('--phos').trim();
   chart.setOption({
     animation: false,
     grid: { left: 52, right: 46, top: 18, bottom: 42 },
@@ -199,40 +235,101 @@ async function render() {
       { type: 'value', max: 100, show: false }
     ],
     series: [
-      { name: '样本', type: 'scatter', data: smoke, symbolSize: 2.2, large: true,
+      { type: 'scatter', data: smoke, symbolSize: 2.2, large: true,
         itemStyle: { color: 'rgba(124,227,139,.17)' }, silent: true },
-      { name: '中位数', type: 'line', data: median, showSymbol: false, connectNulls: false,
+      { type: 'line', data: median, showSymbol: false, connectNulls: false,
         lineStyle: { color: phos, width: 1.6, shadowColor: phos, shadowBlur: 6 }, z: 5 },
-      { name: '丢包%', type: 'bar', yAxisIndex: 1, data: lossBars, barMaxWidth: 3,
+      { type: 'bar', yAxisIndex: 1, data: lossBars, barMaxWidth: 3,
         itemStyle: { color: 'rgba(255,92,87,.55)' } },
-      { name: '突发', type: 'scatter', yAxisIndex: 1, data: burstPts, symbol: 'diamond',
+      { type: 'scatter', yAxisIndex: 1, data: burstPts, symbol: 'diamond',
         symbolSize: 9, itemStyle: { color: '#ff5c57' }, z: 6 }
     ]
   }, true);
 }
 
-document.querySelectorAll('.rng button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.rng button').forEach(x => x.classList.remove('on'));
+// ---- 主机总览:点表头排序 ----
+const HOST_COLS = [
+  ['type', 'thType'], ['name', 'thName'], ['host', 'thHost'],
+  ['interval_sec', 'thInterval'], ['pace', 'thPace'], ['sensitivity', 'thSens'], ['status', 'thStatus'],
+];
+function renderHosts() {
+  const head = $('hostsHead'); head.innerHTML = '';
+  HOST_COLS.forEach(([key, label]) => {
+    const th = document.createElement('th');
+    th.innerHTML = T(label) + (sortKey === key ? ` <span class="dir">${sortDir > 0 ? '▲' : '▼'}</span>` : '');
+    th.onclick = () => { sortDir = sortKey === key ? -sortDir : 1; sortKey = key; renderHosts(); };
+    head.appendChild(th);
+  });
+  const rows = [...targets].sort((a, b) => {
+    const va = sortKey === 'status' ? (a.status.alert ? 1 : 0) : a[sortKey];
+    const vb = sortKey === 'status' ? (b.status.alert ? 1 : 0) : b[sortKey];
+    return (typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb))) * sortDir;
+  });
+  const body = $('hostsBody'); body.innerHTML = '';
+  rows.forEach(t => {
+    const st = t.alerts_off ? `<span class="st-obs">${T('stObserve')}</span>`
+      : t.status.alert ? `<span class="st-bad">● ${T('stAlert')} · ${t.status.kind || ''}</span>`
+      : `<span class="st-ok">● ${T('stOK')}</span>`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${t.type === 'icmp' ? 'PING' : 'TCP'}</td><td>${t.name}</td>` +
+      `<td class="mono">${t.host}</td><td>${t.interval_sec}s</td>` +
+      `<td>${t.pace}</td><td>${t.sensitivity}</td><td>${st}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+// ---- 通知配置(只读展示,URL 已由服务端脱敏) ----
+async function renderHooks() {
+  if (hooks === null) hooks = await (await fetch('/api/webhooks')).json() || [];
+  const head = $('hooksHead');
+  head.innerHTML = ['hkName', 'hkURL', 'hkKinds', 'hkSecret'].map(k => `<th style="cursor:default">${T(k)}</th>`).join('');
+  const body = $('hooksBody'); body.innerHTML = '';
+  hooks.forEach(h => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${h.name}</td><td class="mono">${h.url}</td>` +
+      `<td>${h.kinds && h.kinds.length ? h.kinds.join(' · ') : T('hkAll')}</td>` +
+      `<td>${h.has_secret ? T('hkYes') : T('hkNo')}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+async function render() {
+  await loadTargets();
+  if (view === 'scope') renderScope();
+  if (view === 'hosts') renderHosts();
+  if (view === 'hooks') renderHooks();
+}
+
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
-  minutes = +b.dataset.m;
+  view = b.dataset.v;
+  ['scope', 'hosts', 'hooks'].forEach(v => $('view-' + v).style.display = v === view ? '' : 'none');
   render();
+  if (view === 'scope') chart.resize();
+});
+
+document.querySelectorAll('.rng button[data-m]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.rng button[data-m]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); minutes = +b.dataset.m; render();
 });
 
 document.querySelectorAll('#tfilter button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tfilter button').forEach(x => x.classList.remove('on'));
-  b.classList.add('on');
-  typeFilter = b.dataset.t;
-  render();
+  b.classList.add('on'); typeFilter = b.dataset.t; render();
 });
 
 $('push').onclick = async () => {
-  const r = await (await fetch('/api/push', { method: 'POST' })).json();
-  const t = $('toast'); t.textContent = r.ok || '已触发'; t.style.display = 'block';
+  await fetch('/api/push', { method: 'POST' });
+  const t = $('toast'); t.textContent = T('pushed'); t.style.display = 'block';
   setTimeout(() => t.style.display = 'none', 2500);
 };
+$('logout').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.href = '/login'; };
 
+fetch('/api/meta').then(r => r.json()).then(m => { if (m.auth) $('logout').style.display = ''; });
+mountLangSelect($('lang'), applyI18n);
+applyI18n();
 window.addEventListener('resize', () => chart.resize());
-render();
 setInterval(render, 60000);
 </script>
 </body>
