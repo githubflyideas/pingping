@@ -4,11 +4,8 @@
 
 >A single-binary network link quality oscilloscope — modern Smokeping semantics, zero dependencies, air-gapped friendly, conclusions-first Feishu alerting.
 
-![广州电信 · 6h 窗口:一场 40 分钟的拥塞事件,烟雾散开、突发标为 ◆](docs/hero.png)
+![电信 · 6h 窗口:一场 40 分钟的拥塞事件,烟雾散开、突发标为 ◆](docs/hero.png)
 
-| 健康链路就是一条细亮线 |
-|---|
-|(docs/clean.png) |
 
 *(截图为内置回放机制生成的演示数
 ## 零部署，零安装
