@@ -6,7 +6,7 @@
 > 下载地址
 > https://github.com/githubflyideas/pingping/releases
 
-pingping 是一个网络链路质量示波器:每轮发 20 个探测包,把**全部样本**画成烟雾图(Smokeping 的可视化语义),用 robust z-score 自动判定丢包突发和 P99 劣化,结论直接推进飞书。
+pingping 是一个网络链路质量示波器:每轮发 20 个探测包,把**全部样本**画成烟雾图(Smokeping 的可视化语义),用 robust z-score 自动判定丢包突发和 P99 劣化,还可以推到飞书。
 
 A single-binary network link quality oscilloscope — modern Smokeping semantics, zero dependencies, air-gapped friendly, conclusions-first Feishu alerting.
 
@@ -62,14 +62,6 @@ setcap cap_net_raw+ep ./pingping
 - **红柱** = 该轮丢包率;**◆** = 被 z-score 判定的丢包突发
 - 健康链路是一条细亮线;劣化链路是一团散开的烟
 
-## 告警规则(v1 两条,刻意少)
-
-| 规则 | 判定 | 升级条件 |
-|---|---|---|
-| 丢包突发 | 单轮丢包数对 4h 历史的 robust z-score(中位数+MAD)≥ 3.5 | 30 分钟内 ≥ 3 次 |
-| P99 劣化 | 近 15 分钟 P99 > 1 小时前基线 × 1.5 且增量 ≥ 10ms | 连续 3 次确认 |
-
-冷却 30 分钟,持续正常 15 分钟发恢复通知。阈值都可配,默认值即最佳实践。
 
 ## 按目标分档
 
@@ -81,11 +73,6 @@ setcap cap_net_raw+ep ./pingping
 | `sensitivity` | `strict` / `normal` / `relaxed` | 早叫(核心链路)/ 默认 / 少叫(天生就抖的公网链路) |
 | `alerts` | `false` | 纯观测:烟雾图和突发标记照常,永远不推告警 |
 
-目标还可以带 `extra` 自定义字段(如机房、负责人、runbook 链接),与全局 `extra` 合并后渲染进告警卡片 —— 收到告警的人不用再查这条链路归谁管。
-
-## 消息路由与安全
-
-每个 webhook 可配 `kinds` 白名单(`alert` `recovery` `heartbeat` `daily` `manual`),告警进运维群、日报进领导群互不打扰;开启了飞书"签名校验"的机器人填 `secret` 即可,签名自动计算。若机器人使用"自定义关键词"模式,关键词填 `pingping`(所有卡片标题均含)。告警卡片自带来源实例、目标地址、开始时间与持续时长。
 
 ## 数据即文本
 
@@ -98,16 +85,6 @@ data/
 ```
 
 可以 `grep`,可以 `jq`,可以 `tar`,永远不会"数据库坏了打不开"。
-
-## 它不做什么
-
-- 不做 up/down 状态页、不做 91 种通知渠道 —— 那是 [Uptime Kuma](https://github.com/louislam/uptime-kuma) 的领域,两者并存互补
-- 不做 HTTP 内容断言、证书检查 —— 这里只关心链路本身
-- v1 仅 IPv4、单节点多目标;多节点 mesh 互测在路线图上
-
-## 前身
-
-本项目继承自 ai-sreagent(完整代码在本仓库 git history 中):robust z-score 异常检测、飞行记录器、结论先行的告警哲学来自那里 —— LLM 诊断循环被确定性规则引擎替代,三组件架构被压缩成一个二进制。同门项目:[deltascope](https://github.com/githubflyideas/deltascope)(air-gapped 性能回归对比)。
 
 ## 赞助
 
