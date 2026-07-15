@@ -1,7 +1,10 @@
 # pingping
 
-> **监控告诉你挂没挂,pingping 告诉你活得好不好。**
-> 用户说"卡",监控全绿 —— 故障藏在 RTT 分布和丢包突发里,而 up/down 类工具的数据模型在数学上就看不见它。
+> **pingping 探测链路质量，像是一个单二进制smokeping**
+> 用户说"卡",但监控全绿时 —— 有可能是故障藏在 RTT 分布和丢包突发里,用它说不定可以帮上你。
+>
+> 下载地址
+> https://github.com/githubflyideas/pingping/releases
 
 pingping 是一个网络链路质量示波器:每轮发 20 个探测包,把**全部样本**画成烟雾图(Smokeping 的可视化语义),用 robust z-score 自动判定丢包突发和 P99 劣化,结论直接推进飞书。
 
