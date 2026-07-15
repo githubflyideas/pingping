@@ -8,7 +8,13 @@
   "instance": "",                // 告警来源标识,多实例部署时区分是谁在叫;不填默认取主机名
   "extra": { "环境": "生产" },   // 全局自定义字段,渲染进所有告警/恢复卡片
 
-  // 探测目标。type: icmp(默认)| tcp
+  // 目标列表目录:推荐用 targets/ping.list 和 targets/tcp.list 管理目标 —— 一行一个,加监控只需
+  //   echo "1.2.3.4 广州电信 pace=fast 负责人=张三" >> targets/ping.list   (重启生效)
+  //   echo "10.0.0.5:443 网关" >> targets/tcp.list
+  // 行格式:host[:port] [名称] [pace=] [sensitivity=] [interval=] [alerts=false] [自定义k=v]
+  "targets_dir": "./targets",
+
+  // 需要完整 JSON 结构的目标也可以直接写在这里,与列表合并加载。type: icmp(默认)| tcp
   // 节奏三档 pace: fast(15s/每轮30包) normal(60s) slow(300s);显式 interval_sec 优先级最高
   // 敏感度三档 sensitivity: strict(核心链路,早叫) normal relaxed(天生就抖的链路,少叫)
   "targets": [

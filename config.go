@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -13,6 +16,7 @@ type Config struct {
 	DataDir       string            `json:"data_dir"`
 	WebBaseURL    string            `json:"web_base_url"` // 飞书卡片按钮链接,留空则不带按钮
 	Instance      string            `json:"instance"`     // 告警来源标识,不填默认取主机名
+	TargetsDir    string            `json:"targets_dir"`  // 目标列表目录(ping.list / tcp.list),默认 ./targets
 	Extra         map[string]string `json:"extra"`        // 全局自定义字段,进所有告警/恢复卡片
 	Targets       []TargetCfg  `json:"targets"`
 	Probe         ProbeCfg     `json:"probe"`
@@ -67,6 +71,86 @@ type ScheduleCfg struct {
 
 var dirSan = regexp.MustCompile(`[^a-zA-Z0-9._\p{Han}-]`)
 
+// loadTargetLists 读取 targets 目录下的 ping.list / tcp.list。
+// 行格式:host[:port]  [名称...]  [k=v ...]
+//   已知选项:pace= sensitivity=(或 sens=) interval= alerts=
+//   未知的 k=v 全部进目标的自定义字段(extra),随告警卡片展示
+// # 开头是注释,空行跳过。目录或文件不存在则静默跳过。
+func loadTargetLists(dir string) ([]TargetCfg, error) {
+	var out []TargetCfg
+	for _, spec := range []struct{ file, typ string }{{"ping.list", "icmp"}, {"tcp.list", "tcp"}} {
+		raw, err := os.ReadFile(filepath.Join(dir, spec.file))
+		if err != nil {
+			continue
+		}
+		for ln, line := range strings.Split(string(raw), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			t, err := parseListLine(line, spec.typ)
+			if err != nil {
+				return nil, fmt.Errorf("%s/%s 第 %d 行: %w", dir, spec.file, ln+1, err)
+			}
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
+func parseListLine(line, typ string) (TargetCfg, error) {
+	t := TargetCfg{Type: typ}
+	fields := strings.Fields(line)
+	addr := fields[0]
+	if typ == "tcp" {
+		host, portStr, err := net.SplitHostPort(addr)
+		if err != nil {
+			return t, fmt.Errorf("tcp 目标 %q 需要 host:port 格式", addr)
+		}
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port <= 0 {
+			return t, fmt.Errorf("tcp 目标 %q 端口无效", addr)
+		}
+		t.Host, t.Port = host, port
+	} else {
+		t.Host = addr
+	}
+	var nameParts []string
+	for _, f := range fields[1:] {
+		k, v, isKV := strings.Cut(f, "=")
+		if !isKV {
+			nameParts = append(nameParts, f)
+			continue
+		}
+		switch k {
+		case "pace":
+			t.Pace = v
+		case "sensitivity", "sens":
+			t.Sensitivity = v
+		case "interval":
+			n, err := strconv.Atoi(v)
+			if err != nil || n <= 0 {
+				return t, fmt.Errorf("interval=%q 无效", v)
+			}
+			t.IntervalSec = n
+		case "alerts":
+			b := v == "true"
+			t.Alerts = &b
+		default: // 未知键 = 自定义字段(机房、负责人、runbook……)
+			if t.Extra == nil {
+				t.Extra = map[string]string{}
+			}
+			t.Extra[k] = v
+		}
+	}
+	if len(nameParts) > 0 {
+		t.Name = strings.Join(nameParts, " ")
+	} else {
+		t.Name = addr
+	}
+	return t, nil
+}
+
 func LoadConfig(path string) (*Config, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -84,8 +168,17 @@ func LoadConfig(path string) (*Config, error) {
 	if err := json.Unmarshal(stripJSONC(raw), cfg); err != nil {
 		return nil, fmt.Errorf("解析 %s: %w", path, err)
 	}
+	if cfg.TargetsDir == "" {
+		cfg.TargetsDir = "./targets"
+	}
+	// 列表目录:运维加目标的正道 —— echo "1.2.3.4 广州电信" >> targets/ping.list
+	listTargets, err := loadTargetLists(cfg.TargetsDir)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Targets = append(cfg.Targets, listTargets...)
 	if len(cfg.Targets) == 0 {
-		return nil, fmt.Errorf("targets 为空:至少配置一个探测目标")
+		return nil, fmt.Errorf("没有任何探测目标:在配置的 targets 里或 %s/ping.list、tcp.list 中至少加一个", cfg.TargetsDir)
 	}
 	seen := map[string]bool{}
 	for i := range cfg.Targets {
