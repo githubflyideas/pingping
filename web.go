@@ -32,14 +32,20 @@ func serveWeb(cfg *Config, store *Store, det *Detector, n *Notifier) {
 		now := time.Now()
 		type item struct {
 			Name    string `json:"name"`
+			Type    string `json:"type"`
 			Status  Status `json:"status"`
 			Last1h  Stats  `json:"last_1h"`
 			Last24h Stats  `json:"last_24h"`
+		}
+		typeOf := map[string]string{}
+		for _, t := range cfg.Targets {
+			typeOf[t.Name] = t.Type
 		}
 		var out []item
 		for _, name := range store.Names() {
 			out = append(out, item{
 				Name:    name,
+				Type:    typeOf[name],
 				Status:  statuses[name],
 				Last1h:  calcStats(store.Recent(name, now.Add(-time.Hour).Unix())),
 				Last24h: calcStats(store.Recent(name, now.Add(-24*time.Hour).Unix())),

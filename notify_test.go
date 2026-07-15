@@ -54,3 +54,20 @@ func TestProbeParams(t *testing.T) {
 		t.Fatalf("显式 interval_sec 应最优先: %v", iv)
 	}
 }
+
+func TestParseListLine(t *testing.T) {
+	tt, err := parseListLine("59.43.247.1 香港 CN2 pace=fast sens=strict 机房=GZ1", "icmp")
+	if err != nil || tt.Name != "香港 CN2" || tt.Pace != "fast" || tt.Sensitivity != "strict" || tt.Extra["机房"] != "GZ1" {
+		t.Fatalf("icmp 行解析错误: %+v %v", tt, err)
+	}
+	tt, err = parseListLine("10.0.0.5:443 网关 alerts=false interval=30", "tcp")
+	if err != nil || tt.Host != "10.0.0.5" || tt.Port != 443 || tt.Alerts == nil || *tt.Alerts || tt.IntervalSec != 30 {
+		t.Fatalf("tcp 行解析错误: %+v %v", tt, err)
+	}
+	if tt, _ := parseListLine("www.baidu.com", "icmp"); tt.Name != "www.baidu.com" {
+		t.Fatalf("无名称时应回落到 host: %+v", tt)
+	}
+	if _, err := parseListLine("nohost-noport 名字", "tcp"); err == nil {
+		t.Fatal("tcp 缺端口应报错")
+	}
+}

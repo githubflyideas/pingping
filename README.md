@@ -32,7 +32,16 @@ tar xzf pingping-v*-linux-amd64.tar.gz && cd pingping-*/
 ./pingping
 ```
 
-首次运行自动生成演示配置(探测 www.baidu.com),按提示打开 http://localhost:8517,几分钟后第一缕烟雾成形。之后编辑 `pingping.jsonc` 换成你自己的目标和飞书 webhook,重启生效。
+首次运行自动生成演示配置(探测 www.baidu.com),按提示打开 http://localhost:8517,几分钟后第一缕烟雾成形。
+
+加监控目标就一行,重启生效:
+
+```bash
+echo "59.43.247.1 香港CN2 pace=fast sensitivity=strict 负责人=张三" >> targets/ping.list
+echo "10.0.0.5:443 API网关" >> targets/tcp.list
+```
+
+行格式:`host[:port] [名称] [pace=fast|slow] [sensitivity=strict|relaxed] [interval=秒] [alerts=false]`,其余 `k=v` 自动成为自定义字段进告警卡片。飞书 webhook 在 `pingping.jsonc` 里配置。Web 界面可按 PING/TCP 筛选目标。
 
 也可以源码构建:`go build -o pingping .`(无任何第三方依赖)。
 

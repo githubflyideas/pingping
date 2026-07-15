@@ -16,17 +16,21 @@ var version = "dev"
 
 // demoConfig 是首次运行自动生成的演示配置。fast 档让第一屏的烟雾几分钟内成形。
 const demoConfig = `{
-  // pingping 演示配置 —— 首次运行自动生成,按需修改后重启生效
+  // pingping 演示配置 —— 首次运行自动生成
+  // 探测目标写在 targets/ping.list 和 targets/tcp.list,一行一个,重启生效
   // 完整字段说明见仓库内 config.example.jsonc
-  "listen": "0.0.0.0:8517",
-  "targets": [
-    { "name": "演示 · 百度", "type": "icmp", "host": "www.baidu.com", "pace": "fast" }
-  ]
+  "listen": "0.0.0.0:8517"
   // 飞书推送:去掉下面的注释,填入你的群机器人 webhook
   //,"webhooks": [
   //  { "name": "运维群", "url": "https://open.feishu.cn/open-apis/bot/v2/hook/xxxx" }
   //]
 }
+`
+
+const demoPingList = `# 一行一个 ICMP 探测目标,# 是注释,改完重启生效
+# 格式:host  [名称]  [pace=fast|slow] [sensitivity=strict|relaxed] [interval=秒] [alerts=false] [自定义k=v]
+# 例:59.43.247.1  香港CN2  pace=fast sensitivity=strict 机房=GZ1 负责人=张三
+www.baidu.com 演示·百度 pace=fast
 `
 
 // portOf 从监听地址提取给人看的端口后缀。
@@ -55,7 +59,12 @@ func main() {
 		// 下载解压、执行、开浏览器,三十秒看到第一缕烟。
 		if os.IsNotExist(err) {
 			if werr := os.WriteFile(*cfgPath, []byte(demoConfig), 0o644); werr == nil {
-				log.Printf("未找到配置文件,已生成演示配置 %s(探测 www.baidu.com),按需修改后重启生效", *cfgPath)
+				os.MkdirAll("targets", 0o755)
+				if _, serr := os.Stat("targets/ping.list"); os.IsNotExist(serr) {
+					os.WriteFile("targets/ping.list", []byte(demoPingList), 0o644)
+				}
+				log.Printf("未找到配置文件,已生成演示配置 %s + targets/ping.list(探测 www.baidu.com)", *cfgPath)
+				log.Printf("加监控就一行:echo \"1.2.3.4 广州电信\" >> targets/ping.list,重启生效")
 				cfg, err = LoadConfig(*cfgPath)
 			}
 		}

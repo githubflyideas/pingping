@@ -84,7 +84,14 @@
     <button class="push" id="push">推送实时报告到飞书</button>
   </header>
 
-  <div class="pills" id="pills"></div>
+  <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap">
+    <div class="rng" id="tfilter" style="display:none">
+      <button data-t="all" class="on">全部</button>
+      <button data-t="icmp">PING</button>
+      <button data-t="tcp">TCP</button>
+    </div>
+    <div class="pills" id="pills" style="margin-bottom:0"></div>
+  </div>
 
   <div class="scope">
     <div id="chart"></div>
@@ -113,7 +120,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-let targets = [], current = null, minutes = 360;
+let targets = [], current = null, minutes = 360, typeFilter = 'all';
 
 // 深链接:/#t=广州电信&m=1440 —— 可以把"这条链路这个窗口"直接发给同事
 const hp = new URLSearchParams(location.hash.slice(1));
@@ -124,15 +131,18 @@ const chart = echarts.init($('chart'), null, { renderer: 'canvas' });
 
 async function loadTargets() {
   targets = await (await fetch('/api/targets')).json() || [];
+  const kinds = new Set(targets.map(t => t.type));
+  $('tfilter').style.display = kinds.size > 1 ? '' : 'none';
+  const visible = targets.filter(t => typeFilter === 'all' || t.type === typeFilter);
   const pills = $('pills'); pills.innerHTML = '';
-  targets.forEach(t => {
+  visible.forEach(t => {
     const b = document.createElement('button');
     b.className = 'pill' + (t.name === current ? ' on' : '');
     b.innerHTML = `<span class="led${t.status.alert ? ' bad' : ''}"></span>${t.name}`;
     b.onclick = () => { current = t.name; render(); };
     pills.appendChild(b);
   });
-  if (!current && targets.length) current = targets[0].name;
+  if ((!current || !visible.some(t => t.name === current)) && visible.length) current = visible[0].name;
 }
 
 async function render() {
@@ -205,6 +215,13 @@ document.querySelectorAll('.rng button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.rng button').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
   minutes = +b.dataset.m;
+  render();
+});
+
+document.querySelectorAll('#tfilter button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tfilter button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  typeFilter = b.dataset.t;
   render();
 });
 
