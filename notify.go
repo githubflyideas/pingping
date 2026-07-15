@@ -2,65 +2,120 @@ package main
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
 
-// Notifier 的消息模型是整场产品讨论的结晶,四类消息、推拉对称:
-//   告警   推 · 随时   有事才响(守夜人)
-//   恢复   推 · 随时   有始有终
-//   心跳   推 · 周频   证明自己活着,给沉默赋予语义(dead man's switch)
-//   报告   推 · 日频可选 / 手动拉取(Web 按钮 → 立即推送)
+// Notifier 的消息模型:四类消息、推拉对称:
+//   告警 alert / 恢复 recovery  推 · 随时   有事才响(守夜人)
+//   心跳 heartbeat              推 · 周频   证明自己活着(dead man's switch)
+//   报告 daily / manual         推 · 日频可选 / Web 手动拉取
+// 每类消息都可以按 webhook 的 kinds 白名单分群路由:告警进运维群,日报进领导群。
 type Notifier struct {
 	mu       sync.Mutex
 	hooks    []*hook
 	webURL   string
+	instance string // 告警来源标识(多实例部署时靠它区分是谁在叫)
 	store    *Store
 	det      *Detector
-	alertCnt int // 本周期告警计数(心跳汇报用)
+	alertCnt int
 }
 
 type hook struct {
-	name, url string
-	fails     int
-	skipUntil time.Time
+	name, url, secret string
+	kinds             map[string]bool // nil = 全收
+	fails             int
+	skipUntil         time.Time
+}
+
+// AlertEvent 是一次告警/恢复的完整证据包。
+type AlertEvent struct {
+	Target, Host, Kind string
+	P99Base, P99Cur    float64
+	Bursts             int
+	WorstLoss          float64
+	Since              int64             // 告警开始时间
+	Extra              map[string]string // 全局+目标合并后的自定义字段
 }
 
 func NewNotifier(cfg *Config) *Notifier {
-	n := &Notifier{webURL: cfg.WebBaseURL}
+	n := &Notifier{webURL: cfg.WebBaseURL, instance: cfg.Instance}
 	for _, w := range cfg.Webhooks {
-		n.hooks = append(n.hooks, &hook{name: w.Name, url: w.URL})
+		h := &hook{name: w.Name, url: w.URL, secret: w.Secret}
+		if len(w.Kinds) > 0 {
+			h.kinds = map[string]bool{}
+			for _, k := range w.Kinds {
+				h.kinds[k] = true
+			}
+		}
+		n.hooks = append(n.hooks, h)
 	}
 	return n
 }
 
-// BindSnapshot 后注入,避免构造顺序循环。
 func (n *Notifier) BindSnapshot(s *Store, d *Detector) { n.store, n.det = s, d }
 
-func (n *Notifier) SendAlert(name, kind string, p99b, p99c float64, bursts int, worst float64) {
+func (n *Notifier) SendAlert(ev AlertEvent) {
 	n.mu.Lock()
 	n.alertCnt++
 	n.mu.Unlock()
 	var lines []string
-	if p99c > 0 && p99b > 0 {
+	if ev.P99Cur > 0 && ev.P99Base > 0 {
 		lines = append(lines, fmt.Sprintf("P99 基线 **%.1f ms** → 当前 **%.1f ms**(+%.0f%%)",
-			p99b, p99c, (p99c/p99b-1)*100))
+			ev.P99Base, ev.P99Cur, (ev.P99Cur/ev.P99Base-1)*100))
 	}
-	if bursts > 0 {
-		lines = append(lines, fmt.Sprintf("近 30 分钟丢包突发 **%d** 次,最差单轮丢包 **%.0f%%**", bursts, worst))
+	if ev.Bursts > 0 {
+		lines = append(lines, fmt.Sprintf("近 30 分钟丢包突发 **%d** 次,最差单轮丢包 **%.0f%%**", ev.Bursts, ev.WorstLoss))
 	}
-	lines = append(lines, time.Now().Format("2006-01-02 15:04"))
-	n.push(card("red", "🔴 链路异常 · "+name, "**"+kind+"**\n"+join(lines), n.webURL))
+	n.push("alert", card("red", "🔴 链路异常 · "+ev.Target,
+		"**"+ev.Kind+"**\n"+join(lines), n.meta(ev, false), n.webURL))
 }
 
-func (n *Notifier) SendRecovery(name, kind string) {
-	body := fmt.Sprintf("**%s** 已恢复,持续正常 %d 分钟\n%s",
-		kind, 15, time.Now().Format("2006-01-02 15:04"))
-	n.push(card("green", "🟢 链路恢复 · "+name, body, n.webURL))
+func (n *Notifier) SendRecovery(ev AlertEvent) {
+	body := fmt.Sprintf("**%s** 已恢复", ev.Kind)
+	n.push("recovery", card("green", "🟢 链路恢复 · "+ev.Target, body, n.meta(ev, true), n.webURL))
+}
+
+// meta 组装卡片的元信息区:来源 · 目标 · 时间 · 持续 · 自定义字段。
+// 告警卡片的价值在于可直接行动 —— 是谁、在哪、从何时起、找谁,一段说完。
+func (n *Notifier) meta(ev AlertEvent, ended bool) string {
+	lines := []string{fmt.Sprintf("来源:%s · 目标:%s(%s)", n.instance, ev.Target, ev.Host)}
+	if ev.Since > 0 {
+		t := time.Unix(ev.Since, 0)
+		dur := fmtDur(time.Since(t))
+		if ended {
+			lines = append(lines, fmt.Sprintf("开始:%s · 共持续 %s", t.Format("01-02 15:04"), dur))
+		} else {
+			lines = append(lines, fmt.Sprintf("开始:%s · 已持续 %s", t.Format("01-02 15:04"), dur))
+		}
+	} else {
+		lines = append(lines, "时间:"+time.Now().Format("2006-01-02 15:04"))
+	}
+	if len(ev.Extra) > 0 { // 排序保证卡片字段顺序稳定
+		keys := make([]string, 0, len(ev.Extra))
+		for k := range ev.Extra {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		kv := ""
+		for i, k := range keys {
+			if i > 0 {
+				kv += " · "
+			}
+			kv += k + ":" + ev.Extra[k]
+		}
+		lines = append(lines, kv)
+	}
+	return join(lines)
 }
 
 func (n *Notifier) SendHeartbeat() {
@@ -71,19 +126,17 @@ func (n *Notifier) SendHeartbeat() {
 	n.mu.Unlock()
 	body := fmt.Sprintf("本周期探测 **%d** 轮 · **%d** 条链路 · 告警 **%d** 次 · 已运行 %s\n收到这条消息 = 过去一周的安静确实是平安。",
 		total, len(n.store.Names()), alerts, fmtDur(time.Since(start)))
-	n.push(card("grey", "⚪ pingping 值守正常", body, n.webURL))
+	meta := fmt.Sprintf("来源:%s · %s", n.instance, time.Now().Format("2006-01-02 15:04"))
+	n.push("heartbeat", card("grey", "⚪ pingping 值守正常", body, meta, n.webURL))
 }
 
-// SendReport 日报和手动拉取共用:结论先行,一目标一行。
-func (n *Notifier) SendReport(title string) {
+// SendReport 日报(kind=daily)和手动拉取(kind=manual)共用:结论先行,一目标一行。
+func (n *Notifier) SendReport(title, kind string) {
 	statuses := n.det.Snapshot()
-	since := time.Now().Add(-time.Hour).Unix()
 	var lines []string
 	bad := 0
 	for _, name := range n.store.Names() {
 		st := calcStats(n.store.Recent(name, time.Now().Add(-24*time.Hour).Unix()))
-		st1h := calcStats(n.store.Recent(name, since))
-		_ = st1h
 		if statuses[name].Active {
 			bad++
 		}
@@ -93,14 +146,20 @@ func (n *Notifier) SendReport(title string) {
 	if bad > 0 {
 		head = fmt.Sprintf("**%d** 条链路,**%d** 条异常 ⚠️", len(lines), bad)
 	}
-	n.push(card("blue", title, head+"\n"+join(lines)+"\n"+time.Now().Format("2006-01-02 15:04"), n.webURL))
+	meta := fmt.Sprintf("来源:%s · %s", n.instance, time.Now().Format("2006-01-02 15:04"))
+	n.push(kind, card("blue", title, head+"\n"+join(lines), meta, n.webURL))
 }
 
 // ---- 飞书 interactive card ----
 
-func card(color, title, mdBody, webURL string) []byte {
+func card(color, title, mdBody, mdMeta, webURL string) map[string]any {
 	elements := []any{
 		map[string]any{"tag": "div", "text": map[string]any{"tag": "lark_md", "content": mdBody}},
+	}
+	if mdMeta != "" {
+		elements = append(elements,
+			map[string]any{"tag": "hr"},
+			map[string]any{"tag": "div", "text": map[string]any{"tag": "lark_md", "content": mdMeta}})
 	}
 	if webURL != "" {
 		elements = append(elements, map[string]any{
@@ -112,30 +171,47 @@ func card(color, title, mdBody, webURL string) []byte {
 			}},
 		})
 	}
-	msg := map[string]any{
+	return map[string]any{
 		"msg_type": "interactive",
 		"card": map[string]any{
 			"header":   map[string]any{"template": color, "title": map[string]any{"tag": "plain_text", "content": title}},
 			"elements": elements,
 		},
 	}
-	b, _ := json.Marshal(msg)
-	return b
 }
 
-// push 逐个 webhook 发送:3 次重试,连续失败 10 次退避 1 小时(死链保护)。
-func (n *Notifier) push(payload []byte) {
+// feishuSign 飞书"签名校验"算法:以 timestamp+"\n"+secret 为密钥,对空串做 HmacSHA256 再 base64。
+func feishuSign(secret string, ts int64) string {
+	mac := hmac.New(sha256.New, []byte(strconv.FormatInt(ts, 10)+"\n"+secret))
+	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
+}
+
+// push 按 kinds 路由到各 webhook:3 次重试,连续失败 10 次退避 1 小时(死链保护)。
+func (n *Notifier) push(kind string, msg map[string]any) {
 	for _, h := range n.hooks {
+		if h.kinds != nil && !h.kinds[kind] {
+			continue
+		}
 		go func(h *hook) {
 			if time.Now().Before(h.skipUntil) {
 				return
 			}
+			payload := make(map[string]any, len(msg)+2)
+			for k, v := range msg {
+				payload[k] = v
+			}
+			if h.secret != "" {
+				ts := time.Now().Unix()
+				payload["timestamp"] = strconv.FormatInt(ts, 10)
+				payload["sign"] = feishuSign(h.secret, ts)
+			}
+			body, _ := json.Marshal(payload)
 			var lastErr error
 			for i, backoff := range []time.Duration{0, 2 * time.Second, 5 * time.Second} {
 				if i > 0 {
 					time.Sleep(backoff)
 				}
-				if err := postJSON(h.url, payload); err != nil {
+				if err := postJSON(h.url, body); err != nil {
 					lastErr = err
 					continue
 				}

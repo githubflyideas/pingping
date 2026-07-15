@@ -70,7 +70,7 @@ func serveWeb(cfg *Config, store *Store, det *Detector, n *Notifier) {
 			http.Error(w, "POST only", http.StatusMethodNotAllowed)
 			return
 		}
-		n.SendReport("📊 链路实时报告(手动触发)")
+		n.SendReport("📊 链路实时报告(手动触发)", "manual")
 		writeJSON(w, map[string]string{"ok": "报告已推送至全部 webhook"})
 	})
 

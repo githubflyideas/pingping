@@ -9,9 +9,11 @@ import (
 )
 
 type Config struct {
-	Listen        string       `json:"listen"`
-	DataDir       string       `json:"data_dir"`
-	WebBaseURL    string       `json:"web_base_url"` // 飞书卡片按钮链接,留空则不带按钮
+	Listen        string            `json:"listen"`
+	DataDir       string            `json:"data_dir"`
+	WebBaseURL    string            `json:"web_base_url"` // 飞书卡片按钮链接,留空则不带按钮
+	Instance      string            `json:"instance"`     // 告警来源标识,不填默认取主机名
+	Extra         map[string]string `json:"extra"`        // 全局自定义字段,进所有告警/恢复卡片
 	Targets       []TargetCfg  `json:"targets"`
 	Probe         ProbeCfg     `json:"probe"`
 	Webhooks      []WebhookCfg `json:"webhooks"`
@@ -22,11 +24,16 @@ type Config struct {
 }
 
 type TargetCfg struct {
-	Name string `json:"name"`
-	Type string `json:"type"` // "icmp" | "tcp"
-	Host string `json:"host"`
-	Port int    `json:"port"` // 仅 tcp
-	dir  string // 数据目录名(sanitized)
+	Name        string            `json:"name"`
+	Type        string            `json:"type"` // "icmp" | "tcp"
+	Host        string            `json:"host"`
+	Port        int               `json:"port"`         // 仅 tcp
+	Pace        string            `json:"pace"`         // "fast"(15s) | "normal"(60s) | "slow"(300s),不填走全局
+	IntervalSec int               `json:"interval_sec"` // 显式秒数,优先级最高
+	Sensitivity string            `json:"sensitivity"`  // "strict" | "normal" | "relaxed"
+	Alerts      *bool             `json:"alerts"`       // false = 只观测不告警
+	Extra       map[string]string `json:"extra"`        // 目标级自定义字段,覆盖全局同名键
+	dir         string            // 数据目录名(sanitized)
 }
 
 type ProbeCfg struct {
@@ -37,8 +44,10 @@ type ProbeCfg struct {
 }
 
 type WebhookCfg struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name   string   `json:"name"`
+	URL    string   `json:"url"`
+	Secret string   `json:"secret"` // 飞书"签名校验"密钥,机器人未开签名则留空
+	Kinds  []string `json:"kinds"`  // 只接收哪些消息:alert recovery heartbeat daily manual;不填 = 全收
 }
 
 type AlertCfg struct {
@@ -102,6 +111,34 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if cfg.Probe.Packets < 3 {
 		cfg.Probe.Packets = 3 // 少于 3 个样本谈不上分布
+	}
+	for i := range cfg.Targets {
+		t := &cfg.Targets[i]
+		switch t.Pace {
+		case "", "fast", "normal", "slow":
+		default:
+			return nil, fmt.Errorf("目标 %q 的 pace %q 无效(fast|normal|slow)", t.Name, t.Pace)
+		}
+		switch t.Sensitivity {
+		case "", "strict", "normal", "relaxed":
+		default:
+			return nil, fmt.Errorf("目标 %q 的 sensitivity %q 无效(strict|normal|relaxed)", t.Name, t.Sensitivity)
+		}
+	}
+	validKinds := map[string]bool{"alert": true, "recovery": true, "heartbeat": true, "daily": true, "manual": true}
+	for _, w := range cfg.Webhooks {
+		for _, k := range w.Kinds {
+			if !validKinds[k] {
+				return nil, fmt.Errorf("webhook %q 的 kinds 含无效值 %q", w.Name, k)
+			}
+		}
+	}
+	if cfg.Instance == "" {
+		if hn, err := os.Hostname(); err == nil {
+			cfg.Instance = hn
+		} else {
+			cfg.Instance = "pingping"
+		}
 	}
 	return cfg, nil
 }

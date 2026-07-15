@@ -89,7 +89,7 @@ func scheduler(cfg *Config, store *Store, n *Notifier, stop chan struct{}) {
 		if cfg.DailyReport.Enabled && now.Hour() == cfg.DailyReport.Hour &&
 			now.Minute() == 0 && lastDaily != day {
 			lastDaily = day
-			n.SendReport("📊 链路健康日报")
+			n.SendReport("📊 链路健康日报", "daily")
 		}
 
 		// 周心跳:证明自己活着,给沉默赋予语义

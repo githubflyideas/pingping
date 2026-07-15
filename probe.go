@@ -21,8 +21,24 @@ type Round struct {
 	B  bool      `json:"b,omitempty"` // 本轮被判定为丢包突发
 }
 
+// probeParams 解析目标的探测节奏。优先级:显式 interval_sec > pace 档位 > 全局默认。
+// fast 档同时把每轮包数提到 30,分布更细 —— 快节奏链路值得更好的分辨率。
+func probeParams(t TargetCfg, p ProbeCfg) (interval time.Duration, packets int) {
+	iv, pk := p.IntervalSec, p.Packets
+	switch t.Pace {
+	case "fast":
+		iv, pk = 15, 30
+	case "slow":
+		iv = 300
+	}
+	if t.IntervalSec > 0 {
+		iv = t.IntervalSec
+	}
+	return time.Duration(iv) * time.Second, pk
+}
+
 func probeLoop(t TargetCfg, p ProbeCfg, store *Store, det *Detector, stop chan struct{}) {
-	interval := time.Duration(p.IntervalSec) * time.Second
+	interval, packets := probeParams(t, p)
 	gap := time.Duration(p.GapMs) * time.Millisecond
 	timeout := time.Duration(p.TimeoutMs) * time.Millisecond
 	ticker := time.NewTicker(interval)
@@ -32,13 +48,13 @@ func probeLoop(t TargetCfg, p ProbeCfg, store *Store, det *Detector, stop chan s
 		var err error
 		switch t.Type {
 		case "icmp":
-			r, err = icmpRound(t.Host, p.Packets, gap, timeout)
+			r, err = icmpRound(t.Host, packets, gap, timeout)
 		case "tcp":
-			r = tcpRound(fmt.Sprintf("%s:%d", t.Host, t.Port), p.Packets, gap, timeout)
+			r = tcpRound(fmt.Sprintf("%s:%d", t.Host, t.Port), packets, gap, timeout)
 		}
 		if err != nil {
 			log.Printf("[%s] 探测失败: %v", t.Name, err)
-			r = Round{T: time.Now().Unix(), S: p.Packets, R: 0} // 解析失败按全丢记录,不留时间空洞
+			r = Round{T: time.Now().Unix(), S: packets, R: 0} // 解析失败按全丢记录,不留时间空洞
 		}
 		r.B = det.CheckBurst(t.Name, r) // 突发判定要在落盘前,B 标记随行写入
 		if err := store.Append(t.Name, r); err != nil {
