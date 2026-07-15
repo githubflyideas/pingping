@@ -1,0 +1,44 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: test
+        run: go test ./...
+      - name: build & package
+        run: |
+          set -e
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            GOOS=${target%/*}; GOARCH=${target#*/}
+            dir="pingping-${GITHUB_REF_NAME}-${GOOS}-${GOARCH}"
+            mkdir -p "$dir"
+            CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH \
+              go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" \
+              -o "$dir/pingping" .
+            cp README.md LICENSE config.example.jsonc "$dir/"
+            tar czf "$dir.tar.gz" "$dir"
+          done
+          sha256sum pingping-*.tar.gz > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pingping-*.tar.gz
+            SHA256SUMS
+          body: |
+            ## 开箱即用
+            ```bash
+            tar xzf pingping-*.tar.gz && cd pingping-*/
+            ./pingping
+            ```
+            首次运行自动生成演示配置(探测 www.baidu.com),打开 http://localhost:8517 即见烟雾图。
+            Linux 静态编译,所有发行版通用;非 root 运行若提示无法创建 ICMP socket,执行
+            `sudo setcap cap_net_raw+ep ./pingping` 或放开 `net.ipv4.ping_group_range`。

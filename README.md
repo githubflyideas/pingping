@@ -25,17 +25,16 @@ A single-binary network link quality oscilloscope — modern Smokeping semantics
 
 ## 快速开始
 
+从 [Releases](https://github.com/githubflyideas/pingping/releases) 下载对应平台的包(Linux 静态编译,所有发行版通用;另有 macOS 双架构):
+
 ```bash
-# 1. 构建(或从 Releases 下载)
-go build -o pingping .
-
-# 2. 配置
-cp config.example.jsonc pingping.jsonc && vi pingping.jsonc   # 填 targets 和飞书 webhook
-
-# 3. 运行
-./pingping -c pingping.jsonc
-# 浏览器打开 http://<host>:8517 看烟雾图
+tar xzf pingping-v*-linux-amd64.tar.gz && cd pingping-*/
+./pingping
 ```
+
+首次运行自动生成演示配置(探测 www.baidu.com),按提示打开 http://localhost:8517,几分钟后第一缕烟雾成形。之后编辑 `pingping.jsonc` 换成你自己的目标和飞书 webhook,重启生效。
+
+也可以源码构建:`go build -o pingping .`(无任何第三方依赖)。
 
 无 root 环境需要放开 unprivileged ICMP(多数发行版默认已放开):
 
