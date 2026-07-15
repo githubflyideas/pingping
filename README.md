@@ -1,14 +1,8 @@
 # pingping
 
 > **pingping 探测链路质量画图小工具，自带Web UI，像是一个单二进制的smokeping**。
-> 当用户说"卡",但监控又是正常时 —— 有可能是故障藏在 RTT 分布和丢包突发里,用它说不定可以帮上你。
->
-> 下载地址
-> https://github.com/githubflyideas/pingping/releases
 
-pingping 是一个网络链路质量示波器:每轮发 20 个探测包,把**全部样本**画成烟雾图(Smokeping 的可视化语义),用 robust z-score 自动判定丢包突发和 P99 劣化,还可以推到飞书。
-
-A single-binary network link quality oscilloscope — modern Smokeping semantics, zero dependencies, air-gapped friendly, conclusions-first Feishu alerting.
+>A single-binary network link quality oscilloscope — modern Smokeping semantics, zero dependencies, air-gapped friendly, conclusions-first Feishu alerting.
 
 ![广州电信 · 6h 窗口:一场 40 分钟的拥塞事件,烟雾散开、突发标为 ◆](docs/hero.png)
 
@@ -26,7 +20,7 @@ A single-binary network link quality oscilloscope — modern Smokeping semantics
 - **结论先行** — 告警不甩图表,直接说话:"P99 基线 45.2ms → 当前 131.0ms(+190%),近 30 分钟丢包突发 3 次"
 - **四类消息,推拉对称** — 告警(有事才响)· 恢复 · 周心跳(证明自己活着,给沉默赋予语义)· 报告(日报可选 + Web 一键手动拉取)
 
-## 快速开始
+## 零部署，零安装
 
 从 [Releases](https://github.com/githubflyideas/pingping/releases) 下载对应平台的包(Linux 静态编译,所有发行版通用;另有 macOS 双架构):
 
@@ -48,13 +42,6 @@ echo "10.0.0.5:443 API网关" >> targets/tcp.list
 
 也可以源码构建:`go build -o pingping .`(无任何第三方依赖)。
 
-无 root 环境需要放开 unprivileged ICMP(多数发行版默认已放开):
-
-```bash
-sysctl -w net.ipv4.ping_group_range="0 2147483647"
-# 或者给二进制授权 raw socket:
-setcap cap_net_raw+ep ./pingping
-```
 
 ## 读图
 
