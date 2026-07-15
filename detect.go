@@ -16,31 +16,63 @@ import (
 //   burst   丢包突发 —— 单轮丢包数相对历史分布的 robust z 超阈,30 分钟内 N 次升级为告警
 //   degrade P99 劣化 —— 近 15 分钟 P99 相对 1 小时前基线超倍数,连续 3 次确认
 type Detector struct {
-	mu     sync.Mutex
-	cfg    AlertCfg
-	store  *Store
-	notify *Notifier
-	states map[string]*tstate
+	mu      sync.Mutex
+	cfg     AlertCfg
+	store   *Store
+	notify  *Notifier
+	states  map[string]*tstate
+	targets map[string]TargetCfg // 告警事件需要 host/extra/敏感度
+	extra   map[string]string    // 全局自定义字段
+}
+
+// sensParams 敏感度三档:对基准阈值的整体缩放。
+// strict 给核心链路(早叫),relaxed 给天生就抖的公网链路(少叫)。
+type sensParams struct {
+	ratio  float64 // P99 劣化倍数
+	burstN int     // 30 分钟内突发次数升级线
+	streak int     // 劣化连续确认次数
+}
+
+func sensOf(t TargetCfg, base AlertCfg) sensParams {
+	switch t.Sensitivity {
+	case "strict":
+		return sensParams{1.3, 2, 2}
+	case "relaxed":
+		return sensParams{2.0, 5, 5}
+	default:
+		return sensParams{base.DegradeRatio, base.BurstAlertN, 3}
+	}
 }
 
 type tstate struct {
 	degradeStreak int   // 连续劣化确认次数
 	alertActive   bool
 	alertKind     string
+	alertSince    int64 // 本次告警的开始时间
 	lastNotify    int64
 	clearSince    int64 // 条件消失的起点(恢复确认用)
-	// 告警证据(推送和 UI 共用)
-	evP99Base, evP99Cur float64
-	evBursts            int
-	evWorstLoss         float64
 }
 
 func NewDetector(cfg *Config, store *Store, n *Notifier) *Detector {
-	d := &Detector{cfg: cfg.Alerts, store: store, notify: n, states: map[string]*tstate{}}
+	d := &Detector{cfg: cfg.Alerts, store: store, notify: n,
+		states: map[string]*tstate{}, targets: map[string]TargetCfg{}, extra: cfg.Extra}
 	for _, t := range cfg.Targets {
 		d.states[t.Name] = &tstate{}
+		d.targets[t.Name] = t
 	}
 	return d
+}
+
+// mergedExtra 全局字段 + 目标字段,目标覆盖同名键。
+func (d *Detector) mergedExtra(t TargetCfg) map[string]string {
+	out := map[string]string{}
+	for k, v := range d.extra {
+		out[k] = v
+	}
+	for k, v := range t.Extra {
+		out[k] = v
+	}
+	return out
 }
 
 // CheckBurst 在落盘前判定当前轮是否丢包突发(基线不含当前轮)。
@@ -98,6 +130,11 @@ func median(s []float64) float64 {
 
 // AfterAppend 是每轮落盘后的完整评估:劣化检查 + 突发计数 + 状态机。
 func (d *Detector) AfterAppend(name string) {
+	tc := d.targets[name]
+	if tc.Alerts != nil && !*tc.Alerts {
+		return // 纯观测目标:烟雾图和突发标记照常,但永远不叫
+	}
+	sp := sensOf(tc, d.cfg)
 	now := time.Now()
 	ring24 := d.store.Recent(name, now.Add(-24*time.Hour).Unix())
 
@@ -121,7 +158,7 @@ func (d *Detector) AfterAppend(name string) {
 		sort.Float64s(curPool)
 		sort.Float64s(basePool)
 		p99c, p99b = pct(curPool, 99), pct(basePool, 99)
-		degrade = p99c > p99b*d.cfg.DegradeRatio && p99c-p99b > d.cfg.DegradeMinMs
+		degrade = p99c > p99b*sp.ratio && p99c-p99b > d.cfg.DegradeMinMs
 	}
 
 	// --- 突发计数(30 分钟窗) ---
@@ -143,12 +180,13 @@ func (d *Detector) AfterAppend(name string) {
 	} else {
 		st.degradeStreak = 0
 	}
-	degradeAlert := st.degradeStreak >= 3
-	burstAlert := bursts30 >= d.cfg.BurstAlertN
+	degradeAlert := st.degradeStreak >= sp.streak
+	burstAlert := bursts30 >= sp.burstN
 	condition := degradeAlert || burstAlert
 
 	var fire, recovered bool
 	var kind string
+	var since int64
 	if condition {
 		st.clearSince = 0
 		switch {
@@ -161,11 +199,13 @@ func (d *Detector) AfterAppend(name string) {
 		}
 		cooldown := int64(d.cfg.CooldownMin) * 60
 		if !st.alertActive || now.Unix()-st.lastNotify >= cooldown {
+			if !st.alertActive {
+				st.alertSince = now.Unix()
+			}
 			fire = true
 			st.alertActive = true
 			st.alertKind = kind
 			st.lastNotify = now.Unix()
-			st.evP99Base, st.evP99Cur, st.evBursts, st.evWorstLoss = p99b, p99c, bursts30, worstLoss
 		}
 	} else if st.alertActive {
 		if st.clearSince == 0 {
@@ -177,17 +217,31 @@ func (d *Detector) AfterAppend(name string) {
 			kind = st.alertKind
 		}
 	}
-	ev := *st
+	since = st.alertSince
 	d.mu.Unlock()
 
 	if fire {
 		log.Printf("[%s] 告警: %s", name, kind)
-		d.notify.SendAlert(name, kind, ev.evP99Base, ev.evP99Cur, ev.evBursts, ev.evWorstLoss)
+		d.notify.SendAlert(AlertEvent{
+			Target: name, Host: targetAddr(tc), Kind: kind,
+			P99Base: p99b, P99Cur: p99c, Bursts: bursts30, WorstLoss: worstLoss,
+			Since: since, Extra: d.mergedExtra(tc),
+		})
 	}
 	if recovered {
 		log.Printf("[%s] 恢复: %s", name, kind)
-		d.notify.SendRecovery(name, kind)
+		d.notify.SendRecovery(AlertEvent{
+			Target: name, Host: targetAddr(tc), Kind: kind,
+			Since: since, Extra: d.mergedExtra(tc),
+		})
 	}
+}
+
+func targetAddr(t TargetCfg) string {
+	if t.Type == "tcp" {
+		return fmt.Sprintf("%s:%d", t.Host, t.Port)
+	}
+	return t.Host
 }
 
 // Status 给 Web 和报告用的目标状态快照。

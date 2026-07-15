@@ -5,15 +5,24 @@
   "listen": "0.0.0.0:8517",     // Web 监听地址
   "data_dir": "./data",          // 数据目录(JSONL 文本文件,可 grep 可 tar)
   "web_base_url": "",            // 飞书卡片按钮的链接,如 http://10.0.0.5:8517,留空则卡片不带按钮
+  "instance": "",                // 告警来源标识,多实例部署时区分是谁在叫;不填默认取主机名
+  "extra": { "环境": "生产" },   // 全局自定义字段,渲染进所有告警/恢复卡片
 
   // 探测目标。type: icmp(默认)| tcp
+  // 节奏三档 pace: fast(15s/每轮30包) normal(60s) slow(300s);显式 interval_sec 优先级最高
+  // 敏感度三档 sensitivity: strict(核心链路,早叫) normal relaxed(天生就抖的链路,少叫)
   "targets": [
-    { "name": "广州电信",  "type": "icmp", "host": "202.96.128.86" },
-    { "name": "上海联通",  "type": "icmp", "host": "210.22.70.3" },
-    { "name": "API 网关",  "type": "tcp",  "host": "10.0.0.5", "port": 443 }
+    { "name": "跨境专线", "type": "icmp", "host": "59.43.247.1",
+      "pace": "fast", "sensitivity": "strict",
+      "extra": { "机房": "GZ1", "负责人": "张三" } },
+    { "name": "一般业务", "type": "icmp", "host": "202.96.128.86" },
+    { "name": "留档观察", "type": "icmp", "host": "210.22.70.3",
+      "pace": "slow", "alerts": false },
+    { "name": "API 网关", "type": "tcp",  "host": "10.0.0.5", "port": 443,
+      "interval_sec": 30 }
   ],
 
-  // 探测参数。默认值 = 每分钟一轮,每轮 20 包 —— 烟雾图的"烟"来自这 20 个样本
+  // 全局探测默认值(pace 未命中时生效)
   "probe": {
     "interval_sec": 60,
     "packets": 20,
@@ -22,12 +31,16 @@
   },
 
   // 飞书自定义机器人 webhook(群设置 → 群机器人 → 自定义机器人)
-  // 四类消息都推到这里:告警(红)/ 恢复(绿)/ 周心跳(灰)/ 报告(蓝)
+  // secret: 机器人开启"签名校验"后的密钥,没开留空
+  // kinds:  这个群只收哪些消息(alert recovery heartbeat daily manual),不填 = 全收
   "webhooks": [
-    { "name": "运维群", "url": "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx" }
+    { "name": "运维群", "url": "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx",
+      "secret": "", "kinds": ["alert", "recovery", "heartbeat"] },
+    { "name": "领导群", "url": "https://open.feishu.cn/open-apis/bot/v2/hook/yyyyyyyy",
+      "kinds": ["daily"] }
   ],
 
-  // 告警规则(默认值经过校准,一般不需要动)
+  // 告警基准阈值(sensitivity 三档在此基础上缩放,一般不需要动)
   "alerts": {
     "cooldown_min": 30,      // 同一告警重复推送冷却
     "recover_min": 15,       // 持续正常多久才发恢复
