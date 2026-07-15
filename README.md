@@ -1,7 +1,7 @@
 # pingping
 
-> **pingping 探测链路质量，像是一个单二进制smokeping**。
-> 用户说"卡",但监控全绿时 —— 有可能是故障藏在 RTT 分布和丢包突发里,用它说不定可以帮上你。
+> **pingping 探测链路质量画图小工具，像是一个单二进制的smokeping**。
+> 当用户说"卡",但监控又是正常时 —— 有可能是故障藏在 RTT 分布和丢包突发里,用它说不定可以帮上你。
 >
 > 下载地址
 > https://github.com/githubflyideas/pingping/releases
