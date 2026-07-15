@@ -54,6 +54,7 @@ type WebhookCfg struct {
 	URL    string   `json:"url"`
 	Secret string   `json:"secret"` // 飞书"签名校验"密钥,机器人未开签名则留空
 	Kinds  []string `json:"kinds"`  // 只接收哪些消息:alert recovery heartbeat daily manual;不填 = 全收
+	Format string   `json:"format"` // "feishu"(默认,交互卡片)| "json"(裸 JSON 事件,接任意系统)
 }
 
 type AlertCfg struct {
@@ -221,11 +222,19 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 	validKinds := map[string]bool{"alert": true, "recovery": true, "heartbeat": true, "daily": true, "manual": true}
-	for _, w := range cfg.Webhooks {
+	for i := range cfg.Webhooks {
+		w := &cfg.Webhooks[i]
 		for _, k := range w.Kinds {
 			if !validKinds[k] {
 				return nil, fmt.Errorf("webhook %q 的 kinds 含无效值 %q", w.Name, k)
 			}
+		}
+		switch w.Format {
+		case "":
+			w.Format = "feishu"
+		case "feishu", "json":
+		default:
+			return nil, fmt.Errorf("webhook %q 的 format %q 无效(feishu|json)", w.Name, w.Format)
 		}
 	}
 	if cfg.WebUser == "" {
