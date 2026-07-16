@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -69,5 +70,23 @@ func TestParseListLine(t *testing.T) {
 	}
 	if _, err := parseListLine("nohost-noport 名字", "tcp"); err == nil {
 		t.Fatal("tcp 缺端口应报错")
+	}
+}
+
+func TestSplitConfigFiles(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(dir+"/pingping.jsonc", []byte(`{"targets":[{"name":"t","host":"127.0.0.1"}],
+		"webhooks":[{"name":"inline","url":"http://x/1"}]}`), 0o644)
+	os.WriteFile(dir+"/webhooks.jsonc", []byte(`{"webhooks":[{"name":"split","url":"http://x/2","format":"json"}]}`), 0o644)
+	os.WriteFile(dir+"/alerts.jsonc", []byte(`{"alerts":{"cooldown_min":99}}`), 0o644)
+	cfg, err := LoadConfig(dir + "/pingping.jsonc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Webhooks) != 1 || cfg.Webhooks[0].Name != "split" || cfg.Webhooks[0].Format != "json" {
+		t.Fatalf("webhooks.jsonc 应整体替换: %+v", cfg.Webhooks)
+	}
+	if cfg.Alerts.CooldownMin != 99 || cfg.Alerts.DegradeRatio != 1.5 {
+		t.Fatalf("alerts.jsonc 应局部覆盖且保留默认: %+v", cfg.Alerts)
 	}
 }

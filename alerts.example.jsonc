@@ -1,0 +1,12 @@
+{
+  // 告警单独配置文件 —— 复制为 alerts.jsonc(与 pingping.jsonc 同目录)后生效,
+  // 只需写想改的字段,未写的保持内置默认;目标级 sensitivity 三档在此基础上缩放。
+  "alerts": {
+    "cooldown_min": 30,      // 同一告警重复推送冷却
+    "recover_min": 15,       // 持续正常多久才发恢复
+    "degrade_ratio": 1.5,    // P99 超基线倍数判劣化
+    "degrade_min_ms": 10,    // 且绝对增量下限,防低延迟链路误报
+    "burst_z": 3.5,          // 丢包突发 robust z-score 阈值
+    "burst_alert_n": 3       // 30 分钟内突发 N 次升级为告警
+  }
+}

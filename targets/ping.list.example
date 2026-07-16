@@ -1,0 +1,5 @@
+# ICMP targets — one per line, restart to apply. Copy to ping.list.
+# format: host  [name]  [pace=fast|slow] [sensitivity=strict|relaxed] [interval=sec] [alerts=false] [custom k=v]
+www.google.com   Demo·Google       pace=fast
+59.43.247.1      HK-CN2            pace=fast sensitivity=strict dc=GZ1 owner=zhang
+203.0.113.10     Branch-Office     pace=slow alerts=false

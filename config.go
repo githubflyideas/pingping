@@ -171,6 +171,29 @@ func LoadConfig(path string) (*Config, error) {
 	if err := json.Unmarshal(stripJSONC(raw), cfg); err != nil {
 		return nil, fmt.Errorf("解析 %s: %w", path, err)
 	}
+	// 拆分配置:主配置同目录下的 webhooks.jsonc / alerts.jsonc 若存在则优先。
+	// webhooks.jsonc 整体替换 webhooks;alerts.jsonc 在默认值之上做局部覆盖。
+	confDir := filepath.Dir(path)
+	if raw, err := os.ReadFile(filepath.Join(confDir, "webhooks.jsonc")); err == nil {
+		var w struct {
+			Webhooks []WebhookCfg `json:"webhooks"`
+		}
+		if err := json.Unmarshal(stripJSONC(raw), &w); err != nil {
+			return nil, fmt.Errorf("解析 webhooks.jsonc: %w", err)
+		}
+		cfg.Webhooks = w.Webhooks
+	}
+	if raw, err := os.ReadFile(filepath.Join(confDir, "alerts.jsonc")); err == nil {
+		tmp := cfg.Alerts
+		var a struct {
+			Alerts *AlertCfg `json:"alerts"`
+		}
+		a.Alerts = &tmp
+		if err := json.Unmarshal(stripJSONC(raw), &a); err != nil {
+			return nil, fmt.Errorf("解析 alerts.jsonc: %w", err)
+		}
+		cfg.Alerts = tmp
+	}
 	if cfg.TargetsDir == "" {
 		cfg.TargetsDir = "./targets"
 	}

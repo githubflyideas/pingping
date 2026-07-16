@@ -30,7 +30,7 @@ const demoConfig = `{
 const demoPingList = `# 一行一个 ICMP 探测目标,# 是注释,改完重启生效
 # 格式:host  [名称]  [pace=fast|slow] [sensitivity=strict|relaxed] [interval=秒] [alerts=false] [自定义k=v]
 # 例:59.43.247.1  香港CN2  pace=fast sensitivity=strict 机房=GZ1 负责人=张三
-www.baidu.com 演示·百度 pace=fast
+www.google.com Demo·Google pace=fast
 `
 
 // portOf 从监听地址提取给人看的端口后缀。
@@ -44,8 +44,9 @@ func portOf(listen string) string {
 }
 
 func main() {
-	cfgPath := flag.String("c", "pingping.jsonc", "配置文件路径 (JSONC)")
-	showVer := flag.Bool("version", false, "打印版本")
+	cfgPath := flag.String("c", "pingping.jsonc", "config file path (JSONC)")
+	localOnly := flag.Bool("localhost", false, "bind 127.0.0.1 only — put Caddy/Nginx/Apache in front for auth/TLS")
+	showVer := flag.Bool("version", false, "print version")
 	flag.Parse()
 
 	if *showVer {
@@ -55,7 +56,7 @@ func main() {
 
 	cfg, err := LoadConfig(*cfgPath)
 	if err != nil {
-		// 零配置开箱:找不到配置文件时自动生成演示配置(探测 www.baidu.com),
+		// 零配置开箱:找不到配置文件时自动生成演示配置(探测 www.google.com),
 		// 下载解压、执行、开浏览器,三十秒看到第一缕烟。
 		if os.IsNotExist(err) {
 			if werr := os.WriteFile(*cfgPath, []byte(demoConfig), 0o644); werr == nil {
@@ -63,7 +64,7 @@ func main() {
 				if _, serr := os.Stat("targets/ping.list"); os.IsNotExist(serr) {
 					os.WriteFile("targets/ping.list", []byte(demoPingList), 0o644)
 				}
-				log.Printf("未找到配置文件,已生成演示配置 %s + targets/ping.list(探测 www.baidu.com)", *cfgPath)
+				log.Printf("未找到配置文件,已生成演示配置 %s + targets/ping.list(探测 www.google.com)", *cfgPath)
 				log.Printf("加监控就一行:echo \"1.2.3.4 广州电信\" >> targets/ping.list,重启生效")
 				cfg, err = LoadConfig(*cfgPath)
 			}
@@ -71,6 +72,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("配置加载失败: %v", err)
 		}
+	}
+
+	if *localOnly {
+		cfg.Listen = "127.0.0.1" + portOf(cfg.Listen)
 	}
 
 	store, err := NewStore(cfg.DataDir, cfg.Targets)

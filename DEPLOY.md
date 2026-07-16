@@ -42,3 +42,36 @@ systemctl enable --now pingping
 # crontab,配合 healthchecks.io 或内网等价物
 */5 * * * * curl -fsS http://127.0.0.1:8517/api/targets >/dev/null && curl -fsS https://hc-ping.com/<uuid> >/dev/null
 ```
+
+## 反向代理认证(--localhost)
+
+不想让 pingping 自己管密码?加 `--localhost` 参数只绑定 127.0.0.1,认证和 TLS 交给前端反代:
+
+```bash
+./pingping --localhost -c pingping.jsonc
+```
+
+Caddy(自动 HTTPS + basic auth):
+
+```
+ping.example.com {
+    basic_auth {
+        yong $2a$14$...   # caddy hash-password 生成
+    }
+    reverse_proxy 127.0.0.1:8517
+}
+```
+
+Nginx:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name ping.example.com;
+    auth_basic "pingping";
+    auth_basic_user_file /etc/nginx/htpasswd;   # htpasswd -c 生成
+    location / { proxy_pass http://127.0.0.1:8517; }
+}
+```
+
+此时可不设 `web_password`(反代已挡在前面),或两层都开当双保险。
