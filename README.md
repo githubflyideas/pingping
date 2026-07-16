@@ -2,7 +2,7 @@
 
 ## English
 
->A lightweight network link quality detect.
+>A lightweight network link quality detect tool.
 While it may not be as heavy-duty or mature as Smokeping, it is exceptionally lightweight. It is a single binary file—just copy and run. No Docker, no root required, and zero database dependencies.
 Data and logs rotate automatically, so you’ll never have to worry about running out of disk space. You can edit your monitoring targets with any text editor you like (or even a simple echo one-liner).
 Run ./pingping, go grab a cup of coffee, and head over to http://localhost:8517 to see your first puff of network smoke!
