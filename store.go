@@ -40,9 +40,6 @@ func NewStore(dir string, targets []TargetCfg) (*Store, error) {
 			return nil, err
 		}
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "summary"), 0o755); err != nil {
-		return nil, err
-	}
 	return s, nil
 }
 
@@ -109,7 +106,7 @@ func (s *Store) Replay() {
 		s.rings[name] = ring
 		s.mu.Unlock()
 		if len(ring) > 0 {
-			log.Printf("[%s] 回放 %d 轮", name, len(ring))
+			log.Printf("[%s] replayed %d rounds", name, len(ring))
 		}
 	}
 }
@@ -176,41 +173,6 @@ func pct(sorted []float64, p float64) float64 {
 	return sorted[idx]
 }
 
-// RollupDay 把某天的原始文件压成汇总层的一行。
-func (s *Store) RollupDay(day string) error {
-	for _, name := range s.names {
-		f, err := os.Open(s.dayFile(name, day))
-		if err != nil {
-			continue // 该目标当天无数据
-		}
-		var rounds []Round
-		sc := bufio.NewScanner(f)
-		sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-		for sc.Scan() {
-			var r Round
-			if json.Unmarshal(sc.Bytes(), &r) == nil {
-				rounds = append(rounds, r)
-			}
-		}
-		f.Close()
-		if len(rounds) == 0 {
-			continue
-		}
-		st := calcStats(rounds)
-		rec := map[string]any{"d": day, "p50": round2(st.P50), "p90": round2(st.P90),
-			"p99": round2(st.P99), "loss": round2(st.LossPct), "rounds": st.Rounds, "bursts": st.Bursts}
-		line, _ := json.Marshal(rec)
-		sf, err := os.OpenFile(filepath.Join(s.dir, "summary", s.dirs[name]+".jsonl"),
-			os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-		if err != nil {
-			return err
-		}
-		sf.Write(append(line, '\n'))
-		sf.Close()
-	}
-	return nil
-}
-
 // Retention:保留期就是 rm。按天分文件让清理不需要任何压缩整理逻辑。
 func (s *Store) Retention(days int) {
 	if days <= 0 {
@@ -226,27 +188,10 @@ func (s *Store) Retention(days int) {
 			day := e.Name()
 			if len(day) >= 10 && day[:10] < cut {
 				os.Remove(filepath.Join(s.dir, dir, e.Name()))
-				log.Printf("保留期清理: %s/%s", dir, e.Name())
+				log.Printf("retention: removed %s/%s", dir, e.Name())
 			}
 		}
 	}
-}
-
-func (s *Store) SummaryLines(name string, n int) []json.RawMessage {
-	f, err := os.Open(filepath.Join(s.dir, "summary", s.dirs[name]+".jsonl"))
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-	var lines []json.RawMessage
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		lines = append(lines, json.RawMessage(append([]byte(nil), sc.Bytes()...)))
-	}
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
-	}
-	return lines
 }
 
 func round2(f float64) float64 { return float64(int(f*100+0.5)) / 100 }
