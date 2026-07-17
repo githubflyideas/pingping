@@ -24,7 +24,7 @@ jobs:
             CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH \
               go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" \
               -o "$dir/pingping" .
-            cp README.md LICENSE config.example.jsonc "$dir/"
+            cp LICENSE "$dir/"
             tar czf "$dir.tar.gz" "$dir"
           done
           sha256sum pingping-*.tar.gz > SHA256SUMS

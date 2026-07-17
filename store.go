@@ -122,7 +122,114 @@ func (s *Store) Recent(name string, since int64) []Round {
 	return out
 }
 
-func (s *Store) Names() []string { return s.names }
+func (s *Store) Names() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return append([]string(nil), s.names...)
+}
+
+// EnsureTarget / RemoveTarget: storage side of hot reload. Removal only drops
+// the in-memory ring; data files stay on disk.
+func (s *Store) EnsureTarget(t TargetCfg) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.rings[t.Name]; ok {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Join(s.dir, t.dir), 0o755); err != nil {
+		return err
+	}
+	s.dirs[t.Name] = t.dir
+	s.rings[t.Name] = nil
+	s.names = append(s.names, t.Name)
+	return nil
+}
+
+func (s *Store) RemoveTarget(name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.rings, name)
+	for i, n := range s.names {
+		if n == name {
+			s.names = append(s.names[:i], s.names[i+1:]...)
+			break
+		}
+	}
+}
+
+// BandRow: one aggregated bucket for windows beyond the 24h smoke range.
+type BandRow struct {
+	T      int64   `json:"t"`
+	P50    float64 `json:"p50"`
+	P90    float64 `json:"p90"`
+	P99    float64 `json:"p99"`
+	Loss   float64 `json:"loss"`
+	Bursts int     `json:"b,omitempty"`
+	N      int     `json:"n"`
+}
+
+// BandSeries aggregates raw day files into fixed-width buckets. Bucket width is
+// hardcoded per window so long ranges stay cheap: 7d→10min, 30d→30min, 90d→2h,
+// 180d/all→4h. Reading a season of JSONL takes a moment; it is a manual click.
+func (s *Store) BandSeries(name string, days int) []BandRow {
+	bucket := int64(600)
+	switch {
+	case days > 90:
+		bucket = 14400
+	case days > 30:
+		bucket = 7200
+	case days > 7:
+		bucket = 1800
+	}
+	var rows []BandRow
+	for i := days; i >= 0; i-- {
+		day := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
+		rounds, _ := s.readDay(name, day)
+		if len(rounds) == 0 {
+			continue
+		}
+		rows = append(rows, bucketRounds(rounds, bucket)...)
+	}
+	return rows
+}
+
+func bucketRounds(rounds []Round, size int64) []BandRow {
+	buckets := map[int64][]Round{}
+	for _, r := range rounds {
+		k := r.T / size * size
+		buckets[k] = append(buckets[k], r)
+	}
+	keys := make([]int64, 0, len(buckets))
+	for k := range buckets {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	out := make([]BandRow, 0, len(keys))
+	for _, k := range keys {
+		st := calcStats(buckets[k])
+		out = append(out, BandRow{T: k, P50: round2(st.P50), P90: round2(st.P90),
+			P99: round2(st.P99), Loss: round2(st.LossPct), Bursts: st.Bursts, N: st.Rounds})
+	}
+	return out
+}
+
+func (s *Store) readDay(name, day string) ([]Round, error) {
+	f, err := os.Open(s.dayFile(name, day))
+	if err != nil {
+		return nil, nil
+	}
+	defer f.Close()
+	var out []Round
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for sc.Scan() {
+		var r Round
+		if json.Unmarshal(sc.Bytes(), &r) == nil {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
 
 func (s *Store) Counters() (uint64, time.Time) {
 	s.mu.RLock()
