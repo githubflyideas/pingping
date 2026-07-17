@@ -8,97 +8,304 @@ open [Releases](https://github.com/githubflyideas/pingping/releases)
 tar xzf pingping-v*-linux-amd64.tar.gz && cd pingping-*/
 ./pingping
 ```
+English
 
-## English
+PingPing is a lightweight network latency and link quality visualization tool.
 
->A lightweight network link quality detect tool.
-While it may not be as heavy-duty or mature as Smokeping, it is exceptionally lightweight. It is a single binary file—just copy and run. No Docker, no root required, and zero database dependencies.
-Data and logs rotate automatically, so you’ll never have to worry about running out of disk space. You can edit your monitoring targets with any text editor you like (or even a simple echo one-liner).
-Run ./pingping, go grab a cup of coffee, and head over to http://localhost:8517 to see your first puff of network smoke!
-  
-## 中文
+It may not be as powerful or feature-rich as Smokeping, but it's ridiculously lightweight.
 
-pingping：一個輕量級的網路鏈路品質繪圖小工具。
-雖然沒有 Smokeping 那般強大與成熟，但它極致輕量。單一執行檔（Single Binary），複製即用。免 Docker、免 Root 權限，且無資料庫依賴。
-數據與日誌會自動輪轉（Rotate），永遠不用擔心塞爆硬碟。你可以用任何喜歡的編輯器（甚至只要一行 echo 指令）直接修改監控目標。
-執行 ./pingping，然後去泡杯咖啡吧。回來打開 http://localhost:8517，看看你的第一縷網路煙霧！
+Single binary
+No Docker
+No make. Just scp and run.
+No database
+Plain text configuration. Edit targets with your favorite editor—or even a single echo command.
 
-## 日本語
-pingping：超軽量なネットワーク品質監視・可視化ツール。
-Smokepingほどの多機能さや成熟度はありませんが、圧倒的にシンプルで軽量です。単一のバイナリで、コピーするだけ。Docker不要、Root権限不要、データベースも不要です。
-データやログは自動でローテーションされるため、ディスク容量を圧迫する心配もありません。お好みのテキストエディタ（あるいは echo コマンド1行）で監視対象をサクッと書き換えるだけ。
-./pingping を実行したら、コーヒーでも淹れに行きましょう。戻って http://localhost:8517 を開けば、最初の「煙霧」があなたを迎えてくれます！
+Download it, extract it, run ./pingping, then go grab a coffee.
 
-## 한국어
-pingping: 초경량 네트워크 링크 품질 모니터링 툴.
-Smokeping만큼 강력하거나 완숙하진 않지만, 극도로 가볍습니다. 단일 바이너리로 복사해서 바로 사용 가능하며 Docker, root 권한, 데이터베이스가 전혀 필요 없습니다.
-데이터와 로그는 자동으로 로테이션되어 디스크가 가득 찰 걱정이 전혀 없습니다. 익숙한 텍스트 에디터(혹은 간단한 echo 한 줄)로 모니터링 대상을 가볍게 수정하기만 하면 됩니다.
-./pingping 을 실행하고 커피 한 잔 타고 오세요. 브라우저로 http://localhost:8517 에 접속해 첫 네트워크 스모그 그래프를 확인해 보세요!
+When you're back, open http://localhost:8517 and watch your first puff of network smoke.
 
-## Deutsch
-pingping: Ein leichtgewichtiges Tool zur Visualisierung der Verbindungsqualität.
-Es ist vielleicht nicht so mächtig und ausgereift wie Smokeping, aber dafür extrem schlank. Eine einzige Binärdatei – einfach kopieren und starten. Kein Docker, keine Root-Rechte, keine Datenbankabhängigkeit.
-Daten und Logs rotieren automatisch, sodass Sie sich nie Sorgen um eine volle Festplatte machen müssen. Sie können Ihre Überwachungsziele mit jedem beliebigen Texteditor (oder sogar mit einer einfachen Zeile echo) bearbeiten.
-Starten Sie ./pingping, kochen Sie sich einen Kaffee und öffnen Sie http://localhost:8517, um Ihre erste Netzwerk-Rauchwolke zu sehen!
+Español
 
-## Français
-pingping : Un outil ultra-léger de visualisation de la qualité réseau.
-Certes, il n'est pas aussi puissant ou mature que Smokeping, mais il est d'une légèreté absolue. Un seul fichier binaire : copiez, collez, c'est prêt. Pas besoin de Docker, pas de privilèges root, et aucune dépendance de base de données.
-Les données et les journaux pivotent automatiquement pour ne jamais saturer votre disque. Modifiez vos cibles de surveillance avec l'éditeur de texte de votre choix (ou même une simple ligne echo).
-Lancez ./pingping, allez vous faire couler un café, et ouvrez http://localhost:8517 pour admirer votre première volute de fumée réseau !
+PingPing es una herramienta ligera para visualizar la calidad de enlaces de red.
 
-## Español
-pingping: Una herramienta ligera para graficar la calidad del enlace de red.
-Aunque no es tan robusto ni maduro como Smokeping, es sumamente ligero. Un único archivo binario: copiar y usar. Sin Docker, sin necesidad de root y sin dependencias de base de datos.
-Los datos y registros rotan automáticamente, así que nunca tendrás que preocuparte por llenar el disco. Puedes editar tus objetivos de monitoreo con cualquier editor de texto (o incluso con una sola línea de echo).
-Ejecuta ./pingping, ve a prepararte un café, ¡y luego abre http://localhost:8517 para ver tu primera nube de humo en la red!
+Puede que no sea tan potente ni tan completa como Smokeping, pero es extremadamente ligera.
 
-## Português
-pingping: Uma ferramenta super leve para monitorar a qualidade da sua rede.
-Pode não ser tão robusto ou maduro quanto o Smokeping, mas é extremamente leve. Um único arquivo binário: é só copiar e rodar. Sem Docker, sem precisar de root e sem dependência de banco de dados.
-Os dados e logs rotacionam automaticamente, então você nunca precisa se preocupar em lotar o disco. Você pode editar seus alvos de monitoramento com qualquer editor de texto (ou até mesmo com uma linha de echo).
-Rode ./pingping, vá passar um café e depois abra http://localhost:8517 para ver a sua primeira "nuvem de fumaça" na rede!
+Un único ejecutable
+Sin Docker
+Sin make. Solo copia con scp y ejecútalo.
+Sin base de datos
+Configuración en texto plano. Puedes editar los objetivos con cualquier editor, o incluso con un simple comando echo.
 
-## Italiano
-pingping: Un tool leggerissimo per tracciare la qualità della rete.
-Certo, non è potente o maturo come Smokeping, ma è incredibilmente leggero. Un singolo file binario: copia e usa. Niente Docker, nessun privilegio root richiesto e nessuna dipendenza da database.
-Dati e log ruotano automaticamente, così non dovrai mai temere di riempire il disco. Puoi modificare i target di monitoraggio con qualsiasi editor di testo (o persino con un semplice comando echo).
-Avvia ./pingping, vai a prepararti un caffè e poi apri http://localhost:8517 per guardare la tua prima nuvola di fumo di rete!
+Descárgalo, descomprímelo y ejecuta ./pingping. Luego ve a prepararte un café.
 
-## Русский
-pingping: Легковесная утилита для мониторинга качества сетевых каналов.
-Пусть она не такая мощная и зрелая, как Smokeping, но зато невероятно легкая. Один бинарник — скопировал и запустил. Никакого Docker, прав root или зависимостей от баз данных.
-Данные и логи ротируются автоматически, так что забитый диск вам точно не грозит. Править цели мониторинга можно в любом текстовом редакторе (или вообще одной строчкой через echo).
-Запустите ./pingping, заварите себе чашечку кофе, а затем откройте http://localhost:8517, чтобы увидеть свою первую «дымовую завесу» сети!
+Cuando vuelvas, abre http://localhost:8517 y disfruta de tu primera nube de humo de red.
 
-## ไทย
-pingping: เครื่องมือวาดกราฟวัดคุณภาพเครือข่ายแบบน้ำหนักเบา
-แม้จะไม่ได้ทรงพลังหรือฟีเจอร์ครบเครื่องเท่า Smokeping แต่จุดเด่นคือความเบาขั้นสุด เป็นไฟล์ไบนารีเดี่ยว ก๊อปปี้ปุ๊บใช้ได้ปั๊บ ไม่ต้องใช้ Docker ไม่ต้องใช้สิทธิ์ root และไม่มีการพึ่งพาฐานข้อมูลใดๆ
-ข้อมูลและล็อกจะหมุนเวียน (Rotate) โดยอัตโนมัติ หมดกังวลเรื่องฮาร์ดดิสก์เต็มไปได้เลย คุณสามารถแก้ไขเป้าหมายการตรวจวัดได้ด้วยโปรแกรมแก้ไขข้อความที่คุณชอบ (หรือใช้คำสั่ง echo เพียงบรรทัดเดียวก็ยังได้)
-สั่งรัน ./pingping แล้วเดินไปชงกาแฟสักแก้ว กลับมาเปิด http://localhost:8517 เพื่อดู "กราฟหมอก" เส้นแรกของคุณได้เลย!
+Français
 
-## Bahasa Indonesia
-pingping: Alat pembuat grafik kualitas jaringan yang sangat ringan.
-Meskipun tidak sekuat atau sematang Smokeping, alat ini sangat ringan. Hanya satu file biner—tinggal salin dan jalankan. Tanpa Docker, tanpa perlu akses root, dan tanpa ketergantungan database.
-Data dan log berputar (rotate) secara otomatis, jadi Anda tidak perlu khawatir ruang penyimpanan akan penuh. Anda bisa mengubah target pemantauan dengan teks editor favorit Anda (bahkan cukup dengan satu baris perintah echo).
-Jalankan ./pingping, seduh secangkir kopi, lalu buka http://localhost:8517 untuk melihat grafik asap jaringan pertama Anda!
+PingPing est un outil léger de visualisation de la qualité des liaisons réseau.
 
-## Tiếng Việt
-pingping: Công cụ vẽ biểu đồ chất lượng đường truyền siêu nhẹ.
-Tuy không mạnh mẽ và toàn diện như Smokeping, nhưng bù lại nó cực kỳ nhẹ. Chỉ một file binary duy nhất — copy là chạy. Không cần Docker, không cần quyền root và không phụ thuộc vào cơ sở dữ liệu.
-Dữ liệu và log tự động xoay vòng (rotate), bạn sẽ không bao giờ phải lo lắng về việc đầy ổ cứng. Bạn có thể chỉnh sửa mục tiêu giám sát bằng bất kỳ trình soạn thảo văn bản nào (hoặc thậm chí chỉ cần một dòng lệnh echo).
-Chạy ./pingping, đi pha một tách cà phê. Quay lại và mở http://localhost:8517 để thưởng thức "làn khói mạng" đầu tiên của bạn nhé!
+Il n'est peut-être pas aussi puissant ni aussi complet que Smokeping, mais il est incroyablement léger.
 
-## العربية
+Un seul exécutable
+Aucun Docker
+Pas de make. Un simple scp, puis exécutez-le.
+Aucune base de données
+Configuration en texte brut. Modifiez les cibles avec votre éditeur préféré, ou même avec une simple commande echo.
 
-<div dir="rtl">
+Téléchargez-le, décompressez-le et lancez ./pingping.
 
-pingping: أداة خفيفة للغاية لرسم مخططات جودة اتصال الشبكة.
-ومع أنه ليس بقوة أو نضج Smokeping، إلا أنه يتميز بخفة وزنه الفائقة. ملف ثنائي واحد (Single Binary) — انسخه وابدأ تشغيله مباشرة. لا حاجة لـ Docker، ولا صلاحيات root، وبدون أي اعتمادية على قواعد البيانات.
-يتم تدوير البيانات والسجلات تلقائياً، فلا داعي للقلق أبداً من امتلاء القرص. يمكنك تعديل أهداف المراقبة باستخدام أي محرر نصوص تفضله (أو حتى عبر سطر بسيط باستخدام أمر echo).
-شغّل ./pingping ثم اذهب لتحضير كوب من القهوة. وعند عودتك، افتح الرابط http://localhost:8517 لتشاهد أولى خيوط "الضباب" لشبكتك!
+Allez ensuite vous préparer un café.
 
-</div>
+À votre retour, ouvrez http://localhost:8517 et admirez votre premier nuage de fumée réseau.
+
+Português
+
+PingPing é uma ferramenta leve para visualizar a qualidade das ligações de rede.
+
+Talvez não seja tão poderoso quanto o Smokeping, mas é extremamente leve.
+
+Binário único
+Sem Docker
+Sem make. Basta copiar com scp e executar.
+Sem banco de dados
+Configuração em texto simples. Edite os alvos com qualquer editor ou até mesmo com um único comando echo.
+
+Baixe, extraia e execute ./pingping.
+
+Depois vá tomar um café.
+
+Quando voltar, abra http://localhost:8517 e veja a sua primeira fumaça da rede.
+
+Deutsch
+
+PingPing ist ein leichtgewichtiges Werkzeug zur Visualisierung der Netzwerkqualität.
+
+Es ist vielleicht nicht so leistungsfähig wie Smokeping, dafür aber extrem schlank.
+
+Eine einzige ausführbare Datei
+Kein Docker
+Kein make. Einfach per scp kopieren und starten.
+Keine Datenbank
+Konfiguration als Textdatei. Ziele lassen sich mit jedem Editor oder sogar mit einem einzigen echo-Befehl bearbeiten.
+
+Herunterladen, entpacken und ./pingping starten.
+
+Dann gönn dir einen Kaffee.
+
+Wenn du zurückkommst, öffne http://localhost:8517 und sieh dir deine erste Netzwerk-Rauchwolke an.
+
+Русский
+
+PingPing — лёгкий инструмент для визуализации качества сетевых соединений.
+
+Возможно, он не такой мощный, как Smokeping, но зато невероятно лёгкий.
+
+Один исполняемый файл
+Без Docker
+Без make. Просто скопируйте через scp и запустите.
+Без базы данных
+Текстовый файл конфигурации. Цели можно редактировать любым редактором или даже одной командой echo.
+
+Скачайте, распакуйте и запустите ./pingping.
+
+А затем сходите выпить кофе.
+
+Вернувшись, откройте http://localhost:8517 и посмотрите на своё первое «сетевое облако дыма».
+
+
+PingPing は、軽量なネットワーク品質可視化ツールです。
+
+Smokeping ほど高機能ではありませんが、その代わり驚くほど軽量です。
+
+単一バイナリ
+Docker 不要
+make 不要。scp して実行するだけ。
+データベース不要
+設定ファイルはプレーンテキスト。お好みのエディタで編集でき、echo 一行でも監視対象を追加できます。
+
+ダウンロードして展開し、./pingping を実行したら、コーヒーでも淹れましょう。
+
+戻って http://localhost:8517 を開けば、最初のネットワークスモークグラフが待っています。
+
+한국어
+
+PingPing은 가벼운 네트워크 품질 시각화 도구입니다.
+
+Smokeping만큼 강력하지는 않지만, 놀라울 정도로 가볍습니다.
+
+단일 실행 파일
+Docker 불필요
+make 불필요. scp로 복사한 뒤 바로 실행.
+데이터베이스 불필요
+설정은 일반 텍스트 파일입니다. 원하는 편집기로 수정하거나 echo 한 줄만으로도 모니터링 대상을 추가할 수 있습니다.
+
+다운로드하고 압축을 푼 뒤 ./pingping을 실행하세요.
+
+그리고 커피 한 잔 마시고 돌아오세요.
+
+돌아와 http://localhost:8517 를 열면 첫 번째 네트워크 스모크 그래프를 볼 수 있습니다.
+
+简体中文
+
+PingPing 是一个轻量级的网络链路质量绘图工具。
+
+它或许没有 Smokeping 那样强大与成熟，但它足够轻巧。
+
+单一可执行文件（Single Binary）
+无需 Docker
+无需 make，scp 即用
+无需数据库
+纯文本配置文件，任何编辑器都可以修改监控目标，甚至一条 echo 命令即可完成。
+
+下载、解压、执行 ./pingping，然后去泡杯咖啡吧。
+
+回来打开 **http://localhost:8517**，看看你的第一缕网络烟雾！
+
+Bahasa Indonesia
+
+PingPing adalah alat ringan untuk memvisualisasikan kualitas koneksi jaringan.
+
+Mungkin tidak sekuat Smokeping, tetapi sangat ringan.
+
+Satu berkas biner
+Tanpa Docker
+Tanpa make. Cukup salin dengan scp lalu jalankan.
+Tanpa basis data
+Konfigurasi berbentuk teks biasa. Edit target dengan editor favorit Anda, atau bahkan cukup dengan satu perintah echo.
+
+Unduh, ekstrak, lalu jalankan ./pingping.
+
+Kemudian nikmati secangkir kopi.
+
+Saat kembali, buka http://localhost:8517 dan lihat asap pertama jaringan Anda.
+
+Tiếng Việt
+
+PingPing là công cụ nhẹ để trực quan hóa chất lượng kết nối mạng.
+
+Có thể nó không mạnh bằng Smokeping, nhưng cực kỳ gọn nhẹ.
+
+Một tệp thực thi duy nhất
+Không cần Docker
+Không cần make. Chỉ cần scp rồi chạy.
+Không cần cơ sở dữ liệu
+Cấu hình bằng tệp văn bản thuần túy. Bạn có thể chỉnh sửa bằng bất kỳ trình soạn thảo nào, hoặc chỉ với một lệnh echo.
+
+Tải về, giải nén và chạy ./pingping.
+
+Sau đó hãy đi pha một tách cà phê.
+
+Khi quay lại, mở http://localhost:8517 để xem làn khói mạng đầu tiên của bạn.
+
+العربية
+
+PingPing أداة خفيفة لعرض جودة اتصالات الشبكة.
+
+قد لا تكون بنفس قوة Smokeping، لكنها خفيفة للغاية.
+
+ملف تنفيذي واحد
+لا حاجة إلى Docker
+لا حاجة إلى make، فقط انسخه باستخدام scp ثم شغّله.
+لا حاجة إلى قاعدة بيانات
+إعدادات بنص عادي، ويمكن تعديل أهداف المراقبة بأي محرر نصوص، أو حتى بأمر echo واحد.
+
+نزّل البرنامج، فك الضغط، ثم شغّل ./pingping.
+
+بعدها اذهب لتحضير فنجان من القهوة.
+
+وعند عودتك، افتح http://localhost:8517 وشاهد أول مخطط دخان للشبكة.
+
+हिन्दी
+
+PingPing एक हल्का नेटवर्क लिंक गुणवत्ता विज़ुअलाइज़ेशन टूल है।
+
+यह Smokeping जितना शक्तिशाली नहीं हो सकता, लेकिन बेहद हल्का है।
+
+एकल बाइनरी
+Docker की आवश्यकता नहीं
+make की आवश्यकता नहीं। बस scp करें और चलाएँ।
+डेटाबेस की आवश्यकता नहीं
+साधारण टेक्स्ट कॉन्फ़िगरेशन। अपनी पसंद के किसी भी संपादक से लक्ष्य बदलें, या केवल एक echo कमांड से।
+
+डाउनलोड करें, अनज़िप करें और ./pingping चलाएँ।
+
+फिर एक कप कॉफ़ी बना लीजिए।
+
+वापस आकर http://localhost:8517 खोलें और अपना पहला नेटवर्क स्मोक ग्राफ़ देखें।
+
+বাংলা
+
+PingPing একটি হালকা নেটওয়ার্ক সংযোগের মান প্রদর্শনের টুল।
+
+এটি Smokeping-এর মতো শক্তিশালী নাও হতে পারে, তবে অত্যন্ত হালকা।
+
+একটি মাত্র বাইনারি
+Docker প্রয়োজন নেই
+make প্রয়োজন নেই। শুধু scp করে চালান।
+ডাটাবেস প্রয়োজন নেই
+সাধারণ টেক্সট কনফিগারেশন। যেকোনো টেক্সট এডিটর, এমনকি একটি echo কমান্ড দিয়েও মনিটরিং লক্ষ্য পরিবর্তন করা যায়।
+
+ডাউনলোড করুন, আনজিপ করুন এবং ./pingping চালান।
+
+তারপর এক কাপ কফি বানিয়ে আসুন।
+
+ফিরে এসে http://localhost:8517 খুলুন এবং আপনার প্রথম নেটওয়ার্ক স্মোক গ্রাফ দেখুন।
+
+اردو
+
+PingPing نیٹ ورک لنک کے معیار کو دکھانے والا ایک ہلکا پھلکا ٹول ہے۔
+
+یہ شاید Smokeping جتنا طاقتور نہ ہو، لیکن انتہائی ہلکا ہے۔
+
+ایک واحد بائنری
+Docker کی ضرورت نہیں
+make کی ضرورت نہیں۔ صرف scp کریں اور چلائیں۔
+ڈیٹابیس کی ضرورت نہیں
+سادہ ٹیکسٹ کنفیگریشن۔ کسی بھی ایڈیٹر یا صرف ایک echo کمانڈ سے مانیٹرنگ اہداف تبدیل کیے جا سکتے ہیں۔
+
+ڈاؤن لوڈ کریں، ان زپ کریں اور ./pingping چلائیں۔
+
+پھر ایک کپ کافی بنا لیں۔
+
+واپس آ کر http://localhost:8517 کھولیں اور اپنا پہلا نیٹ ورک اسموک گراف دیکھیں۔
+
+Türkçe
+
+PingPing, ağ bağlantısı kalitesini görselleştiren hafif bir araçtır.
+
+Smokeping kadar güçlü olmayabilir, ancak son derece hafiftir.
+
+Tek çalıştırılabilir dosya
+Docker gerekmez
+make gerekmez. scp ile kopyalayın ve çalıştırın.
+Veritabanı gerekmez
+Düz metin yapılandırması. Hedefleri istediğiniz düzenleyiciyle, hatta tek bir echo komutuyla bile değiştirebilirsiniz.
+
+İndirin, arşivi açın ve ./pingping çalıştırın.
+
+Sonra gidip bir kahve hazırlayın.
+
+Geri döndüğünüzde http://localhost:8517 adresini açın ve ilk ağ duman grafiğinizi görün.
+
+ภาษาไทย (Thai)
+
+PingPing เป็นเครื่องมือขนาดเล็กสำหรับแสดงภาพคุณภาพของลิงก์เครือข่าย
+
+อาจจะไม่ได้ทรงพลังหรือมีฟีเจอร์ครบถ้วนเทียบเท่า Smokeping แต่มีจุดเด่นคือความเบาและใช้งานง่ายอย่างมาก
+
+ไฟล์ไบนารีเดียว (Single Binary)
+ไม่ต้องใช้ Docker
+ไม่ต้องใช้ make เพียง scp ไฟล์แล้วใช้งานได้ทันที
+ไม่ต้องใช้ฐานข้อมูล
+ใช้ไฟล์กำหนดค่าแบบข้อความธรรมดา สามารถแก้ไขเป้าหมายการตรวจสอบด้วยโปรแกรมแก้ไขข้อความใดก็ได้ หรือแม้แต่ใช้คำสั่ง echo เพียงบรรทัดเดียว
+
+ดาวน์โหลด แตกไฟล์ แล้วรัน ./pingping
+
+จากนั้นไปชงกาแฟสักแก้ว
+
+เมื่อกลับมา เปิด http://localhost:8517 แล้วดูควันเครือข่ายเส้นแรกของคุณได้เลย
+
+
 
 
 
