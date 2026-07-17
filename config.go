@@ -1,8 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+		"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -12,13 +11,38 @@ import (
 )
 
 // pingping 2.0: a probe, text files, and a smoke graph. Nothing else.
+// Config: v2.1 has no config file. These are the program's constants —
+// the only things a user edits are targets/ping.list and tcp.list.
 type Config struct {
-	Listen        string      `json:"listen"`
-	DataDir       string      `json:"data_dir"`
-	TargetsDir    string      `json:"targets_dir"`
-	Targets       []TargetCfg `json:"targets"`
-	Probe         ProbeCfg    `json:"probe"`
-	RetentionDays int         `json:"retention_days"` // raw JSONL kept this long, then rm
+	Listen        string
+	DataDir       string
+	TargetsDir    string
+	Targets       []TargetCfg
+	Probe         ProbeCfg
+	RetentionDays int
+}
+
+func defaultConfig() *Config {
+	return &Config{
+		Listen:        "0.0.0.0:8517",
+		DataDir:       "./data",
+		TargetsDir:    "./targets",
+		Probe:         ProbeCfg{IntervalSec: 60, Packets: 20, GapMs: 50, TimeoutMs: 1000},
+		RetentionDays: 300,
+	}
+}
+
+// FinishConfig loads targets from the lists and validates them.
+func FinishConfig(cfg *Config) error {
+	listTargets, err := loadTargetLists(cfg.TargetsDir)
+	if err != nil {
+		return err
+	}
+	cfg.Targets = append(cfg.Targets, listTargets...)
+	if len(cfg.Targets) == 0 {
+		return fmt.Errorf("no targets: add one line to %s/ping.list or tcp.list", cfg.TargetsDir)
+	}
+	return validateTargets(cfg)
 }
 
 type TargetCfg struct {
@@ -40,63 +64,39 @@ type ProbeCfg struct {
 
 var dirSan = regexp.MustCompile(`[^a-zA-Z0-9._\p{Han}-]`)
 
-func LoadConfig(path string) (*Config, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	cfg := &Config{
-		Listen:        "0.0.0.0:8517",
-		DataDir:       "./data",
-		Probe:         ProbeCfg{IntervalSec: 60, Packets: 20, GapMs: 50, TimeoutMs: 1000},
-		RetentionDays: 300,
-	}
-	if err := json.Unmarshal(stripJSONC(raw), cfg); err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
-	}
-	if cfg.TargetsDir == "" {
-		cfg.TargetsDir = "./targets"
-	}
-	listTargets, err := loadTargetLists(cfg.TargetsDir)
-	if err != nil {
-		return nil, err
-	}
-	cfg.Targets = append(cfg.Targets, listTargets...)
-	if len(cfg.Targets) == 0 {
-		return nil, fmt.Errorf("no targets: add one to %s/ping.list or tcp.list", cfg.TargetsDir)
-	}
+func validateTargets(cfg *Config) error {
 	seen := map[string]bool{}
 	for i := range cfg.Targets {
 		t := &cfg.Targets[i]
 		if t.Name == "" {
-			return nil, fmt.Errorf("targets[%d] missing name", i)
+			return fmt.Errorf("target #%d has no name", i+1)
+		}
+		if t.Type == "" {
+			t.Type = "icmp"
 		}
 		switch t.Type {
-		case "", "icmp":
-			t.Type = "icmp"
+		case "icmp":
 		case "tcp":
 			if t.Port <= 0 {
-				return nil, fmt.Errorf("tcp target %q needs a port", t.Name)
+				return fmt.Errorf("tcp target %q needs a port", t.Name)
 			}
 		default:
-			return nil, fmt.Errorf("target %q: unknown type %q (icmp|tcp)", t.Name, t.Type)
+			return fmt.Errorf("target %q: unknown type %q", t.Name, t.Type)
 		}
 		switch t.Pace {
 		case "", "fast", "normal", "slow":
 		default:
-			return nil, fmt.Errorf("target %q: invalid pace %q (fast|slow)", t.Name, t.Pace)
+			return fmt.Errorf("target %q: invalid pace %q (fast|slow)", t.Name, t.Pace)
 		}
 		t.dir = dirSan.ReplaceAllString(t.Name, "_")
 		if seen[t.dir] {
-			return nil, fmt.Errorf("target name %q collides with another target", t.Name)
+			return fmt.Errorf("duplicate target name: %q", t.Name)
 		}
 		seen[t.dir] = true
 	}
-	if cfg.Probe.Packets < 3 {
-		cfg.Probe.Packets = 3 // fewer than 3 samples is not a distribution
-	}
-	return cfg, nil
+	return nil
 }
+
 
 // loadTargetLists reads targets/ping.list and tcp.list.
 // line format: host[:port]  [name...]  [pace=fast|slow] [interval=sec]
@@ -165,41 +165,3 @@ func parseListLine(line, typ string) (TargetCfg, error) {
 	return t, nil
 }
 
-func stripJSONC(b []byte) []byte {
-	var out strings.Builder
-	out.Grow(len(b))
-	inStr, esc := false, false
-	for i := 0; i < len(b); i++ {
-		c := b[i]
-		if inStr {
-			out.WriteByte(c)
-			if esc {
-				esc = false
-			} else if c == '\\' {
-				esc = true
-			} else if c == '"' {
-				inStr = false
-			}
-			continue
-		}
-		switch {
-		case c == '"':
-			inStr = true
-			out.WriteByte(c)
-		case c == '/' && i+1 < len(b) && b[i+1] == '/':
-			for i < len(b) && b[i] != '\n' {
-				i++
-			}
-			out.WriteByte('\n')
-		case c == '/' && i+1 < len(b) && b[i+1] == '*':
-			i += 2
-			for i+1 < len(b) && !(b[i] == '*' && b[i+1] == '/') {
-				i++
-			}
-			i++
-		default:
-			out.WriteByte(c)
-		}
-	}
-	return []byte(out.String())
-}
