@@ -24,6 +24,18 @@ Download it, extract it, run ./pingping, then go grab a coffee.
 
 When you're back, open http://localhost:8517 and watch your first puff of network smoke.
 
+PingPing 是一款輕量級的網路鏈路品質繪圖工具。
+它或許沒有 Smokeping 那麼強大、成熟，但它足夠輕巧。
+
+單一執行檔（Single Binary），下載即可使用
+無需 Docker
+無需 Root 權限
+無需資料庫
+使用純文字設定檔，可用任何文字編輯器修改監控目標，甚至一行 echo 指令即可完成。
+
+下載、解壓、執行 ./pingping，然後去泡杯咖啡吧。回來打開 http://localhost:8517，看看你的第一縷網路煙霧！
+
+
 Español
 
 PingPing es una herramienta ligera para visualizar la calidad de enlaces de red.
@@ -145,21 +157,6 @@ make 불필요. scp로 복사한 뒤 바로 실행.
 
 돌아와 http://localhost:8517 를 열면 첫 번째 네트워크 스모크 그래프를 볼 수 있습니다.
 
-简体中文
-
-PingPing 是一个轻量级的网络链路质量绘图工具。
-
-它或许没有 Smokeping 那样强大与成熟，但它足够轻巧。
-
-单一可执行文件（Single Binary）
-无需 Docker
-无需 make，scp 即用
-无需数据库
-纯文本配置文件，任何编辑器都可以修改监控目标，甚至一条 echo 命令即可完成。
-
-下载、解压、执行 ./pingping，然后去泡杯咖啡吧。
-
-回来打开 **http://localhost:8517**，看看你的第一缕网络烟雾！
 
 Bahasa Indonesia
 
