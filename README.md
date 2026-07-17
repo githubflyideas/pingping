@@ -6,9 +6,11 @@
 open [Releases](https://github.com/githubflyideas/pingping/releases) 
 download pingping
 ```bash
-tar xzf pingping-v*-linux-amd64.tar.gz && cd pingping-*/
+tar xzf pingping-v*-linux-amd64.tar.gz
+cd pingping-*/
 ./pingping
 ```
+##and ping host
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
  echo "10.0.0.5:443 Gateway"        >> targets/tcp.list
 ./pingping
