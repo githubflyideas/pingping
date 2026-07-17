@@ -1,4 +1,4 @@
-🌐 **[English](#english)** · [中文](#中文) · [日本語](#日本語) · [한국어](#한국어) · [Deutsch](#deutsch) · [Français](#français) · [Español](#español) · [Português](#português) · [Italiano](#italiano) · [Русский](#русский) · [ไทย](#ไทย) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية)
+🌐 [English](#english) · [中文](#中文) · [Español](#español) · [Français](#français) · [Português](#português) · [Deutsch](#deutsch) · [Русский](#русский) · [日本語](#日本語) · [한국어](#한국어) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية) · [हिन्दी](#हिन्दी) · [বাংলা](#বাংলা) · [اردو](#اردو) · [Türkçe](#türkçe) · [ไทย](#ไทย)
 
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero.png)
 
@@ -14,7 +14,7 @@ tar xzf pingping-v*-linux-amd64.tar.gz && cd pingping-*/
 ./pingping
                              
 
-English
+## English
 
 PingPing is a lightweight network latency and link quality visualization tool.
 
@@ -30,6 +30,8 @@ Download it, extract it, run ./pingping, then go grab a coffee.
 
 When you're back, open http://localhost:8517 and watch your first puff of network smoke.
 
+## 中文
+
 PingPing 是一款輕量級的網路鏈路品質繪圖工具。
 它或許沒有 Smokeping 那麼強大、成熟，但它足夠輕巧。
 
@@ -42,7 +44,7 @@ PingPing 是一款輕量級的網路鏈路品質繪圖工具。
 下載、解壓、執行 ./pingping，然後去泡杯咖啡吧。回來打開 http://localhost:8517，看看你的第一縷網路煙霧！
 
 
-Español
+## Español
 
 PingPing es una herramienta ligera para visualizar la calidad de enlaces de red.
 
@@ -58,7 +60,7 @@ Descárgalo, descomprímelo y ejecuta ./pingping. Luego ve a prepararte un café
 
 Cuando vuelvas, abre http://localhost:8517 y disfruta de tu primera nube de humo de red.
 
-Français
+## Français
 
 PingPing est un outil léger de visualisation de la qualité des liaisons réseau.
 
@@ -76,7 +78,7 @@ Allez ensuite vous préparer un café.
 
 À votre retour, ouvrez http://localhost:8517 et admirez votre premier nuage de fumée réseau.
 
-Português
+## Português
 
 PingPing é uma ferramenta leve para visualizar a qualidade das ligações de rede.
 
@@ -94,7 +96,7 @@ Depois vá tomar um café.
 
 Quando voltar, abra http://localhost:8517 e veja a sua primeira fumaça da rede.
 
-Deutsch
+## Deutsch
 
 PingPing ist ein leichtgewichtiges Werkzeug zur Visualisierung der Netzwerkqualität.
 
@@ -112,7 +114,7 @@ Dann gönn dir einen Kaffee.
 
 Wenn du zurückkommst, öffne http://localhost:8517 und sieh dir deine erste Netzwerk-Rauchwolke an.
 
-Русский
+## Русский
 
 PingPing — лёгкий инструмент для визуализации качества сетевых соединений.
 
@@ -131,6 +133,8 @@ PingPing — лёгкий инструмент для визуализации �
 Вернувшись, откройте http://localhost:8517 и посмотрите на своё первое «сетевое облако дыма».
 
 
+## 日本語
+
 PingPing は、軽量なネットワーク品質可視化ツールです。
 
 Smokeping ほど高機能ではありませんが、その代わり驚くほど軽量です。
@@ -145,7 +149,7 @@ make 不要。scp して実行するだけ。
 
 戻って http://localhost:8517 を開けば、最初のネットワークスモークグラフが待っています。
 
-한국어
+## 한국어
 
 PingPing은 가벼운 네트워크 품질 시각화 도구입니다.
 
@@ -164,7 +168,7 @@ make 불필요. scp로 복사한 뒤 바로 실행.
 돌아와 http://localhost:8517 를 열면 첫 번째 네트워크 스모크 그래프를 볼 수 있습니다.
 
 
-Bahasa Indonesia
+## Bahasa Indonesia
 
 PingPing adalah alat ringan untuk memvisualisasikan kualitas koneksi jaringan.
 
@@ -182,7 +186,7 @@ Kemudian nikmati secangkir kopi.
 
 Saat kembali, buka http://localhost:8517 dan lihat asap pertama jaringan Anda.
 
-Tiếng Việt
+## Tiếng Việt
 
 PingPing là công cụ nhẹ để trực quan hóa chất lượng kết nối mạng.
 
@@ -200,7 +204,7 @@ Sau đó hãy đi pha một tách cà phê.
 
 Khi quay lại, mở http://localhost:8517 để xem làn khói mạng đầu tiên của bạn.
 
-العربية
+## العربية
 
 PingPing أداة خفيفة لعرض جودة اتصالات الشبكة.
 
@@ -218,7 +222,7 @@ PingPing أداة خفيفة لعرض جودة اتصالات الشبكة.
 
 وعند عودتك، افتح http://localhost:8517 وشاهد أول مخطط دخان للشبكة.
 
-हिन्दी
+## हिन्दी
 
 PingPing एक हल्का नेटवर्क लिंक गुणवत्ता विज़ुअलाइज़ेशन टूल है।
 
@@ -236,7 +240,7 @@ make की आवश्यकता नहीं। बस scp करें औ
 
 वापस आकर http://localhost:8517 खोलें और अपना पहला नेटवर्क स्मोक ग्राफ़ देखें।
 
-বাংলা
+## বাংলা
 
 PingPing একটি হালকা নেটওয়ার্ক সংযোগের মান প্রদর্শনের টুল।
 
@@ -254,7 +258,7 @@ make প্রয়োজন নেই। শুধু scp করে চাল�
 
 ফিরে এসে http://localhost:8517 খুলুন এবং আপনার প্রথম নেটওয়ার্ক স্মোক গ্রাফ দেখুন।
 
-اردو
+## اردو
 
 PingPing نیٹ ورک لنک کے معیار کو دکھانے والا ایک ہلکا پھلکا ٹول ہے۔
 
@@ -272,7 +276,7 @@ make کی ضرورت نہیں۔ صرف scp کریں اور چلائیں۔
 
 واپس آ کر http://localhost:8517 کھولیں اور اپنا پہلا نیٹ ورک اسموک گراف دیکھیں۔
 
-Türkçe
+## Türkçe
 
 PingPing, ağ bağlantısı kalitesini görselleştiren hafif bir araçtır.
 
@@ -290,7 +294,7 @@ Sonra gidip bir kahve hazırlayın.
 
 Geri döndüğünüzde http://localhost:8517 adresini açın ve ilk ağ duman grafiğinizi görün.
 
-ภาษาไทย (Thai)
+## ไทย
 
 PingPing เป็นเครื่องมือขนาดเล็กสำหรับแสดงภาพคุณภาพของลิงก์เครือข่าย
 
