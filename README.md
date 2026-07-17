@@ -1,14 +1,6 @@
 🌐 **[English](#english)** · [中文](#中文) · [日本語](#日本語) · [한국어](#한국어) · [Deutsch](#deutsch) · [Français](#français) · [Español](#español) · [Português](#português) · [Italiano](#italiano) · [Русский](#русский) · [ไทย](#ไทย) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية)
 
-## English
-
->A lightweight network link quality detect tool.
-While it may not be as heavy-duty or mature as Smokeping, it is exceptionally lightweight. It is a single binary file—just copy and run. No Docker, no root required, and zero database dependencies.
-Data and logs rotate automatically, so you’ll never have to worry about running out of disk space. You can edit your monitoring targets with any text editor you like (or even a simple echo one-liner).
-Run ./pingping, go grab a cup of coffee, and head over to http://localhost:8517 to see your first puff of network smoke!
-
-
-![Guangzhou Telecom · 6h window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero.png)
+![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero.png)
 
 
 open [Releases](https://github.com/githubflyideas/pingping/releases) 
@@ -17,7 +9,12 @@ tar xzf pingping-v*-linux-amd64.tar.gz && cd pingping-*/
 ./pingping
 ```
 
+## English
 
+>A lightweight network link quality detect tool.
+While it may not be as heavy-duty or mature as Smokeping, it is exceptionally lightweight. It is a single binary file—just copy and run. No Docker, no root required, and zero database dependencies.
+Data and logs rotate automatically, so you’ll never have to worry about running out of disk space. You can edit your monitoring targets with any text editor you like (or even a simple echo one-liner).
+Run ./pingping, go grab a cup of coffee, and head over to http://localhost:8517 to see your first puff of network smoke!
   
 ## 中文
 
