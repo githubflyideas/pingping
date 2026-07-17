@@ -1,17 +1,12 @@
 {
-  // pingping — copy to pingping.jsonc and edit. JSONC: // and /* */ comments allowed.
   // Everything has a sane default; the minimal config is just your targets.
 
   "listen": "0.0.0.0:8517",   // web UI address (use --localhost flag to bind 127.0.0.1 only)
   "data_dir": "./data",       // JSONL text files — grep-able, tar-able
   "targets_dir": "./targets", // ping.list / tcp.list, one target per line:
-                              //   echo "1.2.3.4 Guangzhou pace=fast" >> targets/ping.list
-                              //   echo "10.0.0.5:443 Gateway"        >> targets/tcp.list
-                              // line format: host[:port] [name] [pace=fast|slow] [interval=sec]
 
-  // Inline targets also work (merged with the lists):
   "targets": [
-    // { "name": "HK-CN2", "type": "icmp", "host": "59.43.247.1", "pace": "fast" }
+    // { "name": "xx-xx-xx", "type": "icmp", "host": "5x.143.xx.1", "pace": "fast" }
   ],
 
   "probe": {
