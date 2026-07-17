@@ -311,6 +311,14 @@ smokeping--- https://github.com/oetiker/SmokePing
 
 - ⭐ Star 
 - [GitHub Sponsors](https://github.com/sponsors/githubflyideas) 
+## Design notes
+
+pingping 2.0 is deliberately a **local, read-only oscilloscope**: probes go in, JSONL text files
+sit on disk (300-day retention, deleted nightly), smoke graphs come out. No accounts, no push
+integrations, no database. Run `./pingping --localhost` and put Caddy/Nginx in front if you need
+auth or TLS. If you want alerting, multi-platform notifications, hot reload and tiered storage,
+that lives in the sibling project [fogping](https://github.com/githubflyideas/fogping).
+
 ## License
 
 MIT

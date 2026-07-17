@@ -18,7 +18,8 @@ type Round struct {
 	S  int       `json:"s"`           // 发出
 	R  int       `json:"r"`           // 收到
 	MS []float64 `json:"ms"`          // RTT 样本(毫秒)
-	B  bool      `json:"b,omitempty"` // 本轮被判定为丢包突发
+	B  bool      `json:"b,omitempty"` // flagged as a loss burst
+	Z  float64   `json:"z,omitempty"` // robust z-score behind the flag (tooltip evidence)
 }
 
 // probeParams 解析目标的探测节奏。优先级:显式 interval_sec > pace 档位 > 全局默认。
@@ -53,14 +54,13 @@ func probeLoop(t TargetCfg, p ProbeCfg, store *Store, det *Detector, stop chan s
 			r = tcpRound(fmt.Sprintf("%s:%d", t.Host, t.Port), packets, gap, timeout)
 		}
 		if err != nil {
-			log.Printf("[%s] 探测失败: %v", t.Name, err)
+			log.Printf("[%s] probe error: %v", t.Name, err)
 			r = Round{T: time.Now().Unix(), S: packets, R: 0} // 解析失败按全丢记录,不留时间空洞
 		}
-		r.B = det.CheckBurst(t.Name, r) // 突发判定要在落盘前,B 标记随行写入
+		r.B, r.Z = det.CheckBurst(t.Name, r) // verdict + z evidence, written with the round
 		if err := store.Append(t.Name, r); err != nil {
-			log.Printf("[%s] 写入失败: %v", t.Name, err)
+			log.Printf("[%s] write error: %v", t.Name, err)
 		}
-		det.AfterAppend(t.Name)
 
 		select {
 		case <-stop:
