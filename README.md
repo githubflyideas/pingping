@@ -319,7 +319,7 @@ PingPing เป็นเครื่องมือขนาดเล็กส�
 
 
 
-smokeping--- https://github.com/oetiker/SmokePing
+Friendly Links smokeping--- https://github.com/oetiker/SmokePing
 
 - ⭐ Star 
 - [GitHub Sponsors](https://github.com/sponsors/githubflyideas) 
