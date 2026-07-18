@@ -333,4 +333,4 @@ that lives in the sibling project [fogping](https://github.com/githubflyideas/fo
 
 ## License
 
-MIT
+apache 2.0
