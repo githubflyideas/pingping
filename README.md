@@ -4,7 +4,7 @@
 
 
 open [Releases](https://github.com/githubflyideas/pingping/releases) 
-download pingping
+download pingping*.tar.gz
 ```bash
 tar xzf pingping-v*-linux-amd64.tar.gz
 cd pingping-*/
