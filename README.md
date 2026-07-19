@@ -22,10 +22,10 @@ cd pingping
 open http://localhost:8517
 
 ##add  target host###
-
+```
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
- 
  echo "10.0.0.5:443 mysitewww"        >> targets/tcp.list
+```
                              
 
 ## English
