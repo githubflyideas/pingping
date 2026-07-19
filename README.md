@@ -3,7 +3,7 @@
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero.png)
 
 Ping tells you now. 
-pingPing tells you what happened.
+pingping tells you what happened.
 
 Single Binary. 
 No Docker. 
@@ -22,9 +22,7 @@ cd pingping-*/
 ##add ping host###
 
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
- 
- echo "10.0.0.5:443 Gateway"        >> targets/tcp.list
-./pingping
+ echo "10.0.0.5:443 mysitewww"        >> targets/tcp.list
                              
 
 ## English
