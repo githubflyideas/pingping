@@ -2,6 +2,14 @@
 
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero.png)
 
+Ping tells you now. 
+FogPing tells you what happened.
+
+Single Binary. 
+No Docker. 
+No Database. 
+No Grafana. 
+No Prometheus.
 
 open [Releases](https://github.com/githubflyideas/pingping/releases) 
 download pingping*.tar.gz
