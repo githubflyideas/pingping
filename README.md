@@ -9,7 +9,7 @@ No Database.
 No Grafana. 
 No Prometheus.
 A smokeping-like network tool.
-just copy and run
+just scp and run
 
 open [Releases](https://github.com/githubflyideas/pingping/releases) 
 download pingping*.tar.gz
