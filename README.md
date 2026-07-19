@@ -16,10 +16,10 @@ just scp and run
 open [Releases](https://github.com/githubflyideas/pingping/releases) 
 download pingping*.tar.gz
 ```bash
-cd /home
 tar xzf pingping-v*-linux-amd64.tar.gz
 cd pingping-*/
-./pingping
+cp pingping /home
+cd /home;./pingping
 ```
 ##add ping host###
 
