@@ -17,12 +17,13 @@ open [Releases](https://github.com/githubflyideas/pingping/releases)
 download pingping*.tar.gz
 ```bash
 tar xzf pingping-v*-linux-amd64.tar.gz
-cd pingping-*/;cp pingping /home
-cd /home;./pingping
+mv pingping* pingping;
+cd pingping 
+./pingping
 ```
 open http://localhost:8517
 
-##add ping host###
+##add  target host###
 
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
  
