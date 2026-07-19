@@ -2,8 +2,6 @@
 
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero.png)
 
-Ping tells you now. 
-pingping tells you what happened.
 
 Single Binary. 
 No Docker. 
