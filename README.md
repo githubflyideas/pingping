@@ -4,11 +4,6 @@
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero5.png)
 
 
-Single Binary. 
-No Docker. 
-No Database. 
-No Grafana. 
-No Prometheus.
 A smokeping-like network tool.
 just scp and run
 
