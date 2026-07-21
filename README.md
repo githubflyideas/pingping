@@ -17,7 +17,7 @@ download pingping*.tar.gz
 tar xzf pingping-v*-linux-amd64.tar.gz
 mv pingping* pingping;
 cd pingping 
-./pingping
+./pingping user=admin passwd=admin
 ```
 open http://localhost:8517
 
