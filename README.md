@@ -12,7 +12,7 @@ No Prometheus.
 A smokeping-like network tool.
 just scp and run
 
-open [Releases](https://github.com/githubflyideas/pingping/releases) 
+latest [Releases](https://github.com/githubflyideas/pingping/releases) 
 
 ```bash
 cd /home
