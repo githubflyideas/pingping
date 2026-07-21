@@ -29,9 +29,10 @@ Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh`
 (data is plain per-day JSONL, so cleanup is just find+delete):
 
 ```bash
-./clean.sh 30    # delete probe data older than 30 days
-Latest [Releases](https://github.com/githubflyideas/pingping/releases)                              
+./clean.sh 30    # delete probe data older than 30 days                          
 ```
+Latest [Releases](https://github.com/githubflyideas/pingping/releases)   
+
 ## English
 
 PingPing is a lightweight network latency and link quality visualization tool.
