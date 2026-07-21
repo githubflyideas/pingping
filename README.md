@@ -5,7 +5,7 @@
 
 
 A smokeping-like network tool.
-just scp and run
+Just scp and run
 
 ```bash
 cd /home
@@ -30,7 +30,7 @@ Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh`
 
 ```bash
 ./clean.sh 30    # delete probe data older than 30 days
-latest [Releases](https://github.com/githubflyideas/pingping/releases)                              
+Latest [Releases](https://github.com/githubflyideas/pingping/releases)                              
 ```
 ## English
 
