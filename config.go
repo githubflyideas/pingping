@@ -125,6 +125,9 @@ func loadTargetLists(dir string) ([]TargetCfg, error) {
 func parseListLine(line, typ string) (TargetCfg, error) {
 	t := TargetCfg{Type: typ}
 	fields := strings.Fields(line)
+	if len(fields) == 0 { // fuzz 发现:纯空白行会越界 —— 上游会挡,但函数自身必须皮实
+		return t, fmt.Errorf("empty line")
+	}
 	addr := fields[0]
 	if typ == "tcp" {
 		host, portStr, err := net.SplitHostPort(addr)
