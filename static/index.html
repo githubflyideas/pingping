@@ -151,12 +151,15 @@ async function loadTargets() {
   if ((!current || !visible.some(t => t.name === current)) && visible.length) current = visible[0].name;
 }
 
+let renderSeq = 0;
 async function render() {
+  renderSeq++;
   await loadTargets();
   const t = targets.find(x => x.name === current);
   if (!t) return;
   if (days > 0) { await renderBand(t); return; }
   const rounds = await (await fetch(`/api/series?target=${encodeURIComponent(current)}&minutes=${minutes}`)).json() || [];
+  if (seq !== renderSeq) return; // 过期响应:已切走,丢弃
 
   const smoke = [], median = [], lossBars = [], burstPts = [];
   let sent = 0, recv = 0, bursts = 0;
@@ -179,7 +182,12 @@ async function render() {
     if (lp > 0) lossBars.push([ts, lp]);
     if (r.b) { bursts++; burstPts.push([ts, lp, r.z || 0, r.s - r.r, r.s]); }
     const srt = (r.ms && r.ms.length) ? [...r.ms].sort((a,b)=>a-b) : [];
-    roundInfo[ts] = { med: rmed, lo: srt[0] || 0, hi: srt[srt.length-1] || 0,
+    let avg = 0, mdev = 0;
+    if (srt.length) {
+      avg = srt.reduce((a,v)=>a+v,0) / srt.length;
+      mdev = Math.sqrt(srt.reduce((a,v)=>a+(v-avg)*(v-avg),0) / srt.length);
+    }
+    roundInfo[ts] = { med: rmed, lo: srt[0] || 0, hi: srt[srt.length-1] || 0, avg, mdev,
                       n: (r.ms || []).length, lp, lost: r.s - r.r, s: r.s, b: r.b, z: r.z || 0 };
   });
   pool.sort((a,b)=>a-b);
@@ -221,7 +229,8 @@ async function render() {
         const i = roundInfo[ts];
         if (!i) return '';
         let html = `<b>${new Date(+ts).toLocaleTimeString()}</b>`;
-        html += `<br>RTT median <b>${i.med.toFixed(1)} ms</b> · ${i.n} samples (${i.lo.toFixed(1)}–${i.hi.toFixed(1)})`;
+        html += `<br>rtt min/avg/max/mdev = ${i.lo.toFixed(3)}/${i.avg.toFixed(3)}/${i.hi.toFixed(3)}/${i.mdev.toFixed(3)} ms`;
+        html += `<br>median <b>${i.med.toFixed(1)} ms</b> · ${i.n} samples`;
         html += `<br><span style="color:${i.lp > 0 ? cssv('--alert') : cssv('--dim')}">loss <b>${i.lp.toFixed(0)}%</b> (${i.lost}/${i.s})</span>`;
         if (i.b) html += ` <span style="color:${cssv('--alert')}">· ◆ burst z=${i.z ? i.z.toFixed(2) : '—'}</span>`;
         return html;
@@ -267,6 +276,7 @@ setInterval(render, 60000);
 // P50 line, a P50–P99 band, loss bars and burst counts from server-side buckets.
 async function renderBand(t) {
   const rows = await (await fetch(`/api/band?target=${encodeURIComponent(current)}&days=${days}`)).json() || [];
+  if (seq !== renderSeq) return; // 过期响应:已切走,丢弃
   const p50 = [], band = [], loss = [], bursts = [];
   let lossW = 0, nSum = 0, burstSum = 0, p99max = 0, p50W = 0, p90W = 0;
   rows.forEach(r => {
@@ -298,7 +308,8 @@ async function renderBand(t) {
         const i = roundInfo[ts];
         if (!i) return '';
         let html = `<b>${new Date(+ts).toLocaleTimeString()}</b>`;
-        html += `<br>RTT median <b>${i.med.toFixed(1)} ms</b> · ${i.n} samples (${i.lo.toFixed(1)}–${i.hi.toFixed(1)})`;
+        html += `<br>rtt min/avg/max/mdev = ${i.lo.toFixed(3)}/${i.avg.toFixed(3)}/${i.hi.toFixed(3)}/${i.mdev.toFixed(3)} ms`;
+        html += `<br>median <b>${i.med.toFixed(1)} ms</b> · ${i.n} samples`;
         html += `<br><span style="color:${i.lp > 0 ? cssv('--alert') : cssv('--dim')}">loss <b>${i.lp.toFixed(0)}%</b> (${i.lost}/${i.s})</span>`;
         if (i.b) html += ` <span style="color:${cssv('--alert')}">· ◆ burst z=${i.z ? i.z.toFixed(2) : '—'}</span>`;
         return html;
