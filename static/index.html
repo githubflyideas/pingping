@@ -165,12 +165,15 @@ async function loadTargets() {
   if ((!current || !visible.some(t => t.name === current)) && visible.length) current = visible[0].name;
 }
 
+let renderSeq = 0;
 async function render() {
+  const seq = ++renderSeq;
   await loadTargets();
   const t = targets.find(x => x.name === current);
   if (!t) return;
   if (days > 0) { await renderBand(t); return; }
   const rounds = await (await fetch(`/api/series?target=${encodeURIComponent(current)}&minutes=${minutes}`)).json() || [];
+  if (seq !== renderSeq) return; // 过期响应:用户已切走
 
   const smoke = [], median = [], lossBars = [], burstPts = [];
   let sent = 0, recv = 0, bursts = 0;
@@ -286,6 +289,7 @@ setInterval(render, 60000);
 // P50 line, a P50–P99 band, loss bars and burst counts from server-side buckets.
 async function renderBand(t) {
   const rows = await (await fetch(`/api/band?target=${encodeURIComponent(current)}&days=${days}`)).json() || [];
+  if (seq !== renderSeq) return; // 过期响应:用户已切走
   const p50 = [], band = [], loss = [], bursts = [];
   let lossW = 0, nSum = 0, burstSum = 0, p99max = 0, p50W = 0, p90W = 0;
   rows.forEach(r => {
