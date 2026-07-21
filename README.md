@@ -4,7 +4,7 @@
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero5.png)
 
 
-###A smokeping-like network tool.
+A smokeping-like network tool.
 just scp and run
 
 ```bash
