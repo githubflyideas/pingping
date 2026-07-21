@@ -35,3 +35,63 @@ func TestRobustZ(t *testing.T) {
 		t.Fatalf("9 losses vs 0-2 baseline should be anomalous, z=%v", z)
 	}
 }
+
+func BenchmarkRobustZ(b *testing.B) {
+	base := make([]float64, 240) // 4h 基线 @60s
+	for i := range base {
+		base[i] = float64(i % 3)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		robustZ(9, base)
+	}
+}
+
+func BenchmarkCalcStats24h(b *testing.B) {
+	rounds := make([]Round, 1440) // 24h @60s
+	for i := range rounds {
+		ms := make([]float64, 20)
+		for j := range ms {
+			ms[j] = 38 + float64(j%7)
+		}
+		rounds[i] = Round{T: int64(i * 60), S: 20, R: 20, MS: ms}
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		calcStats(rounds)
+	}
+}
+
+func FuzzParseListLine(f *testing.F) {
+	f.Add("1.2.3.4 name pace=fast", "icmp")
+	f.Add("10.0.0.5:443 gw interval=30", "tcp")
+	f.Add("host:99999 x", "tcp")
+	f.Add("::1 v6", "icmp")
+	f.Fuzz(func(t *testing.T, line, typ string) {
+		if typ != "icmp" && typ != "tcp" {
+			typ = "icmp"
+		}
+		if len(line) == 0 || line[0] == '#' {
+			return
+		}
+		// 只要求不 panic、不接受空 host
+		tt, err := parseListLine(line, typ)
+		if err == nil && tt.Host == "" {
+			t.Fatalf("accepted empty host: %q", line)
+		}
+	})
+}
+
+func FuzzRobustZ(f *testing.F) {
+	f.Add(float64(5), []byte{1, 2, 3, 0, 1})
+	f.Fuzz(func(t *testing.T, x float64, raw []byte) {
+		series := make([]float64, len(raw))
+		for i, b := range raw {
+			series[i] = float64(b)
+		}
+		z := robustZ(x, series) // 不 panic、不产出 NaN 即可
+		if z != z {
+			t.Fatalf("NaN: x=%v series=%v", x, series)
+		}
+	})
+}

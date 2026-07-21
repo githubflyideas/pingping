@@ -335,6 +335,15 @@ Friendly Links smokeping--- https://github.com/oetiker/SmokePing
 
 - ⭐ Star 
 - [GitHub Sponsors](https://github.com/sponsors/githubflyideas) 
+## Data cleanup
+
+Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh` is all you need
+(data is plain per-day JSONL, so cleanup is just find+delete):
+
+```bash
+./clean.sh 30    # delete probe data older than 30 days
+```
+
 ## Design notes
 
 pingping 2.0 is deliberately a **local, read-only oscilloscope**: probes go in, JSONL text files

@@ -11,6 +11,7 @@
     --phos:#7ce38b; --amber:#e8b44a; --alert:#ff5c57; --ink:#c7d0c9; --dim:#5c6b60;
     --grid-axis:#2a332c; --grid-split:#10281a;
     --smoke:rgba(124,227,139,.16); --lossbar:rgba(255,92,87,.55); --glow:6;
+    --smoke-hot:#d8ffe2; --smoke-mid:#7ce38b; --smoke-cool:#8a7a3a;
     --mono: ui-monospace,"SF Mono","Cascadia Mono",Consolas,"Noto Sans Mono",monospace;
   }
   /* Daylight: warm paper — the trace printed on lab graph paper */
@@ -19,6 +20,7 @@
     --phos:#177245; --amber:#986a00; --alert:#c23a32; --ink:#2b2f28; --dim:#8b8a7a;
     --grid-axis:#cfc9b4; --grid-split:#ebe6d4;
     --smoke:rgba(23,114,69,.20); --lossbar:rgba(194,58,50,.5); --glow:0;
+    --smoke-hot:#0e5e37; --smoke-mid:#2f9e63; --smoke-cool:#b08a2e;
   }
   /* Arctic: cool morning light — teal trace on frosted glass */
   html[data-theme="arctic"] {
@@ -26,6 +28,7 @@
     --phos:#0b7285; --amber:#b45309; --alert:#d1433f; --ink:#24313d; --dim:#7f8f9d;
     --grid-axis:#c3d0db; --grid-split:#e3ebf2;
     --smoke:rgba(11,114,133,.18); --lossbar:rgba(209,67,63,.5); --glow:0;
+    --smoke-hot:#064a57; --smoke-mid:#1596ad; --smoke-cool:#b3722f;
   }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--ink); font-family:var(--mono); padding:18px 22px; }
@@ -46,7 +49,14 @@
                 padding:8px 14px; cursor:pointer; }
   .rng button.on { background:#1a2018; color:var(--amber); }
   .scope { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:14px; }
+  .crt { position:relative; }
   #chart { height:420px; background:var(--screen); border-radius:4px; }
+  html:not([data-theme]) .crt::after {
+    content:""; position:absolute; inset:0; border-radius:4px; pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.045) 3px 4px),
+      radial-gradient(120% 90% at 50% 42%, transparent 55%, rgba(0,0,0,.38) 100%);
+  }
   .readouts { display:flex; gap:34px; margin-top:12px; flex-wrap:wrap; align-items:flex-end; }
   .ro .v { font-size:24px; color:var(--phos); }
   .ro .v.bad { color:var(--alert); }
@@ -60,7 +70,7 @@
 <body>
 <header>
   <div class="mark">pingping ●</div>
-  <div class="tag">link quality oscilloscope · monitoring tells you if it's down, pingping tells you how well it lives</div>
+  <div class="tag">One binary. One graph. Zero guesswork.</div>
   <button class="pill" id="themeBtn" title="switch theme" style="margin-left:auto">◐ <span id="themeName">dark</span></button>
 </header>
 
@@ -74,7 +84,7 @@
 </div>
 
 <div class="scope">
-  <div id="chart"></div>
+  <div class="crt"><div id="chart"></div></div>
   <div class="readouts">
     <div class="ro"><div class="v" id="p50">–</div><div class="l">P50 MS</div></div>
     <div class="ro"><div class="v" id="p90">–</div><div class="l">P90 MS</div></div>
@@ -153,11 +163,16 @@ async function render() {
   const pool = [];
   rounds.forEach(r => {
     const ts = r.t * 1000;
-    (r.ms || []).forEach(v => { smoke.push([ts, v]); pool.push(v); });
+    let rmed = 0;
     if (r.ms && r.ms.length) {
       const s = [...r.ms].sort((a,b)=>a-b);
-      median.push([ts, s[Math.floor(s.length/2)]]);
+      rmed = s[Math.floor(s.length/2)];
+      median.push([ts, rmed]);
     }
+    (r.ms || []).forEach(v => {
+      smoke.push([ts, v, rmed ? Math.abs(v - rmed) / rmed : 0]); // 维度2 = 偏离该轮中位数的比例
+      pool.push(v);
+    });
     sent += r.s; recv += r.r;
     const lp = r.s ? (r.s - r.r) / r.s * 100 : 0;
     if (lp > 0) lossBars.push([ts, lp]);
@@ -191,13 +206,20 @@ async function render() {
     ],
     tooltip: { backgroundColor: cssv('--panel'), borderColor: cssv('--line'),
                textStyle: { color: cssv('--ink'), fontSize: 11, fontFamily: 'monospace' } },
+    // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗 —— 渐变即信息
+    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
+      seriesIndex: 0,
+      inRange: { color: [cssv('--smoke-hot'), cssv('--smoke-mid'), cssv('--smoke-cool')],
+                 opacity: [0.5, 0.10] } },
     series: [
-      { type: 'scatter', data: smoke, symbolSize: 2, silent: true,
-        itemStyle: { color: cssv('--smoke') }, large: true },
+      { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, large: true },
+      { type: 'line', data: median, showSymbol: false, silent: true, z: 4,
+        lineStyle: { color: phos, width: 7, opacity: 0.10 } },
       { type: 'line', data: median, showSymbol: false,
-        lineStyle: { color: phos, width: 1.6, shadowColor: phos, shadowBlur: +cssv('--glow') }, z: 5 },
+        lineStyle: { color: phos, width: 1.6, shadowColor: phos, shadowBlur: +cssv('--glow') * 2 }, z: 5 },
       { type: 'bar', yAxisIndex: 1, data: lossBars, barMaxWidth: 3,
-        itemStyle: { color: cssv('--lossbar') } },
+        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1,
+          [{ offset: 0, color: cssv('--alert') }, { offset: 1, color: cssv('--lossbar') }]) } },
       { type: 'scatter', yAxisIndex: 1, data: burstPts, symbol: 'diamond',
         symbolSize: 9, itemStyle: { color: cssv('--alert') }, z: 6,
         tooltip: { formatter: p => `◆ z-score ${p.value[2] ? p.value[2].toFixed(2) : '—'} · loss ${p.value[1].toFixed(0)}% (${p.value[3]}/${p.value[4]})` } }
