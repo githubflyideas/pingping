@@ -175,6 +175,7 @@ async function render() {
   const smoke = [], median = [], lossBars = [], burstPts = [];
   let sent = 0, recv = 0, bursts = 0;
   const pool = [];
+  rounds.sort((a, b) => a.t - b.t);
   const roundInfo = {};
   rounds.forEach(r => {
     const ts = r.t * 1000;
@@ -245,16 +246,16 @@ async function render() {
       }
     },
     // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗 —— 渐变即信息
-    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
+    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 1.0,
       seriesIndex: 0,
       inRange: { color: [cssv('--smoke-hot'), cssv('--smoke-mid'), cssv('--smoke-cool')],
-                 opacity: [0.5, 0.10] } },
+                 opacity: [0.55, 0.25] } },
     series: [
       { type: 'scatter', data: smoke, symbolSize: 2.4, silent: true, progressive: 4000 },
       { type: 'line', data: median, showSymbol: false, silent: true, z: 4,
-        lineStyle: { color: phos, width: 7, opacity: 0.10 } },
+        lineStyle: { color: phos, width: 3, opacity: 0.08 } },
       { type: 'line', data: median, showSymbol: false,
-        lineStyle: { color: phos, width: 1.6, shadowColor: phos, shadowBlur: +cssv('--glow') * 2 }, z: 5 },
+        lineStyle: { color: phos, width: 1.3, shadowColor: phos, shadowBlur: +cssv('--glow') * 2 }, z: 5 },
       { type: 'bar', yAxisIndex: 1, data: lossBars, barMaxWidth: 3,
         itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1,
           [{ offset: 0, color: cssv('--alert') }, { offset: 1, color: cssv('--lossbar') }]) } },
