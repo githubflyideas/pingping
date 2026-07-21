@@ -4,7 +4,7 @@
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero5.png)
 
 
-A smokeping-like network tool.
+###A smokeping-like network tool.
 just scp and run
 
 ```bash
@@ -18,6 +18,7 @@ cd pingping-v2.2.4-linux-amd64
 ```
 open http://localhost:8517 and watch your first puff of network smoke.
 
+-----------------------------------------------------------
 add target host 
 ```
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
