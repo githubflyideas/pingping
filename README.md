@@ -14,7 +14,7 @@ tar -zxvf pingping-v2.2.4-linux-amd64.tar.gz
 
 mkdir /home/pingping -p
 scp pingping-v2.2.4-linux-amd64/pingping /home/pingping
-cd /home/pingping &&./pingping user=admin passwd=admin
+cd /home/pingping; ./pingping user=admin passwd=admin
 ```
 Open http://localhost:8517 and watch your first puff of network smoke.
 
