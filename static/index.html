@@ -7,78 +7,64 @@
 <title>pingping — link quality oscilloscope</title>
 <style>
   :root {
-    --bg:#0a0c0e; --panel:#12171a; --screen:#07090a; --line:#1f262b;
-    --phos:#7ce38b; --amber:#e8b44a; --alert:#ff5c57; --ink:#cdd6cf; --dim:#5f6f64;
-    --grid-axis:#2a332c; --grid-split:#141d16;
-    --smoke:rgba(124,227,139,.16); --lossbar:rgba(255,92,87,.35); --glow:6;
-    --smoke-hot:#eafff0; --smoke-mid:#57d573; --smoke-cool:#7d6a2e;
-    --shadow:0 1px 2px rgba(0,0,0,.5); --shadow-lg:0 10px 30px rgba(0,0,0,.45);
-    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
-    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Noto Sans Mono", monospace;
+    --bg:#0a0c0e; --panel:#101613; --screen:#060808; --line:#1e242a;
+    --phos:#7ce38b; --amber:#e8b44a; --alert:#ff5c57; --ink:#c7d0c9; --dim:#5c6b60;
+    --grid-axis:#2a332c; --grid-split:#10281a;
+    --smoke:rgba(124,227,139,.16); --lossbar:rgba(255,92,87,.55); --glow:6;
+    --smoke-hot:#d8ffe2; --smoke-mid:#7ce38b; --smoke-cool:#8a7a3a;
+    --mono: ui-monospace,"SF Mono","Cascadia Mono",Consolas,"Noto Sans Mono",monospace;
   }
+  /* Daylight: warm paper — the trace printed on lab graph paper */
   html[data-theme="daylight"] {
-    --bg:#f6f3ea; --panel:#fffdf6; --screen:#fffef9; --line:#e6e0cd;
-    --phos:#136c40; --amber:#946400; --alert:#c23a32; --ink:#292d27; --dim:#8b8a78;
-    --grid-axis:#d3cdb6; --grid-split:#efe9d7;
-    --smoke:rgba(23,114,69,.20); --lossbar:rgba(194,58,50,.30); --glow:0;
-    --smoke-hot:#0a4f2d; --smoke-mid:#2f9e63; --smoke-cool:#b08a2e;
-    --shadow:0 1px 3px rgba(80,70,40,.10), 0 1px 2px rgba(80,70,40,.06);
-    --shadow-lg:0 12px 32px rgba(80,70,40,.14);
+    --bg:#f4f1e8; --panel:#faf8f1; --screen:#fffef9; --line:#e0dbc9;
+    --phos:#177245; --amber:#986a00; --alert:#c23a32; --ink:#2b2f28; --dim:#8b8a7a;
+    --grid-axis:#cfc9b4; --grid-split:#ebe6d4;
+    --smoke:rgba(23,114,69,.20); --lossbar:rgba(194,58,50,.5); --glow:0;
+    --smoke-hot:#0e5e37; --smoke-mid:#2f9e63; --smoke-cool:#b08a2e;
   }
+  /* Arctic: cool morning light — teal trace on frosted glass */
   html[data-theme="arctic"] {
-    --bg:#eef2f6; --panel:#ffffff; --screen:#fbfdfe; --line:#dde5ec;
-    --phos:#0b7285; --amber:#b45309; --alert:#d1433f; --ink:#22303c; --dim:#7f8f9d;
-    --grid-axis:#c9d5e0; --grid-split:#e7edf3;
-    --smoke:rgba(11,114,133,.18); --lossbar:rgba(209,67,63,.30); --glow:0;
-    --smoke-hot:#043b46; --smoke-mid:#1596ad; --smoke-cool:#b3722f;
-    --shadow:0 1px 3px rgba(30,50,70,.10), 0 1px 2px rgba(30,50,70,.06);
-    --shadow-lg:0 12px 32px rgba(30,50,70,.14);
+    --bg:#edf1f5; --panel:#f6f9fb; --screen:#fbfdfe; --line:#d7e0e8;
+    --phos:#0b7285; --amber:#b45309; --alert:#d1433f; --ink:#24313d; --dim:#7f8f9d;
+    --grid-axis:#c3d0db; --grid-split:#e3ebf2;
+    --smoke:rgba(11,114,133,.18); --lossbar:rgba(209,67,63,.5); --glow:0;
+    --smoke-hot:#064a57; --smoke-mid:#1596ad; --smoke-cool:#b3722f;
   }
   * { box-sizing:border-box; margin:0; }
-  body { background:var(--bg); color:var(--ink); font-family:var(--sans);
-         padding:24px clamp(16px, 3vw, 40px); font-size:14px; line-height:1.5;
-         -webkit-font-smoothing:antialiased; }
-  header { display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
-  .mark { color:var(--phos); font-weight:700; font-size:21px; letter-spacing:.04em; font-family:var(--mono); }
-  .tag { color:var(--dim); font-size:13px; font-weight:500; letter-spacing:.01em; }
-  .row { display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+  body { background:var(--bg); color:var(--ink); font-family:var(--mono); padding:18px 22px; }
+  header { display:flex; align-items:baseline; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
+  .mark { color:var(--phos); font-weight:700; font-size:20px; letter-spacing:.05em; }
+  .tag { color:var(--dim); font-size:12px; }
+  .row { display:flex; gap:12px; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap; }
   .pills { display:flex; gap:8px; flex-wrap:wrap; }
-  .pill { font-family:var(--sans); font-weight:600; font-size:13px; background:var(--panel);
-          color:var(--ink); border:1px solid var(--line); border-radius:999px; padding:8px 16px;
-          cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow);
-          transition:transform .12s ease, border-color .12s ease, color .12s ease; }
-  .pill:hover { transform:translateY(-1px); border-color:var(--dim); }
+  .pill { font-family:var(--mono); font-size:13px; background:var(--panel); color:var(--ink);
+          border:1px solid var(--line); border-radius:4px; padding:7px 14px; cursor:pointer;
+          display:flex; align-items:center; gap:8px; }
   .pill.on { border-color:var(--phos); color:var(--phos); }
-  .pill:focus-visible { outline:2px solid var(--phos); outline-offset:2px; }
-  .led { width:8px; height:8px; border-radius:50%; background:var(--phos); box-shadow:0 0 8px var(--phos); }
-  .led.bad { background:var(--alert); box-shadow:0 0 8px var(--alert); }
-  .rng { display:flex; align-items:center; background:var(--panel); border:1px solid var(--line);
-         border-radius:10px; overflow:hidden; box-shadow:var(--shadow); }
-  .rng span { color:var(--dim); font-size:10px; padding:0 6px 0 14px; letter-spacing:.14em; font-family:var(--mono); }
+  .led { width:8px; height:8px; border-radius:50%; background:var(--phos); box-shadow:0 0 6px var(--phos); }
+  .led.bad { background:var(--alert); box-shadow:0 0 6px var(--alert); }
+  .rng { display:flex; background:var(--panel); border:1px solid var(--line); border-radius:4px; overflow:hidden; }
+  .rng span { color:var(--dim); font-size:11px; padding:8px 10px 0 12px; letter-spacing:.1em; }
   .rng button { font-family:var(--mono); font-size:12px; background:none; border:0; color:var(--dim);
-                padding:9px 13px; cursor:pointer; transition:color .12s ease, background .12s ease; }
-  .rng button:hover { color:var(--ink); }
-  .rng button.on { background:color-mix(in srgb, var(--amber) 14%, transparent); color:var(--amber); font-weight:700; }
-  .scope { background:var(--panel); border:1px solid var(--line); border-radius:16px;
-           padding:18px; box-shadow:var(--shadow-lg); }
+                padding:8px 14px; cursor:pointer; }
+  .rng button.on { background:#1a2018; color:var(--amber); }
+  .scope { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:14px; }
   .crt { position:relative; }
-  #chart { height:440px; background:var(--screen); border-radius:10px; }
+  #chart { height:420px; background:var(--screen); border-radius:4px; }
   html:not([data-theme]) .crt::after {
-    content:""; position:absolute; inset:0; border-radius:10px; pointer-events:none;
+    content:""; position:absolute; inset:0; border-radius:4px; pointer-events:none;
     background:
-      repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.04) 3px 4px),
-      radial-gradient(120% 90% at 50% 42%, transparent 58%, rgba(0,0,0,.34) 100%);
+      repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.045) 3px 4px),
+      radial-gradient(120% 90% at 50% 42%, transparent 55%, rgba(0,0,0,.38) 100%);
   }
-  .readouts { display:flex; gap:0; margin-top:16px; flex-wrap:wrap; align-items:stretch; }
-  .ro { padding:2px 26px 2px 0; margin-right:26px; border-right:1px solid var(--line); }
-  .ro:last-of-type { border-right:0; }
-  .ro .v { font-size:26px; font-weight:600; color:var(--phos); font-family:var(--mono); line-height:1.15; }
+  .readouts { display:flex; gap:34px; margin-top:12px; flex-wrap:wrap; align-items:flex-end; }
+  .ro .v { font-size:24px; color:var(--phos); }
   .ro .v.bad { color:var(--alert); }
-  .ro .l { font-size:10px; color:var(--dim); letter-spacing:.14em; margin-top:3px; font-family:var(--mono); }
+  .ro .l { font-size:10px; color:var(--dim); letter-spacing:.12em; margin-top:2px; }
   .sp { flex:1; }
-  footer { margin-top:14px; color:var(--dim); font-size:12.5px; display:flex; gap:12px; flex-wrap:wrap; }
-  #conclusion { color:var(--ink); font-weight:600; font-family:var(--mono); font-size:12.5px; }
-  .legend { color:var(--dim); font-family:var(--mono); font-size:11.5px; align-self:center; }
+  footer { margin-top:12px; color:var(--dim); font-size:12px; display:flex; gap:10px; flex-wrap:wrap; }
+  #conclusion { color:var(--ink); }
+  .legend { color:var(--dim); }
 </style>
 </head>
 <body>
@@ -165,21 +151,16 @@ async function loadTargets() {
   if ((!current || !visible.some(t => t.name === current)) && visible.length) current = visible[0].name;
 }
 
-let renderSeq = 0;
 async function render() {
-  const seq = ++renderSeq;
   await loadTargets();
   const t = targets.find(x => x.name === current);
   if (!t) return;
   if (days > 0) { await renderBand(t); return; }
   const rounds = await (await fetch(`/api/series?target=${encodeURIComponent(current)}&minutes=${minutes}`)).json() || [];
-  if (seq !== renderSeq) return; // 过期响应:用户已切走
 
   const smoke = [], median = [], lossBars = [], burstPts = [];
   let sent = 0, recv = 0, bursts = 0;
   const pool = [];
-  rounds.sort((a, b) => a.t - b.t);
-  const roundInfo = {};
   rounds.forEach(r => {
     const ts = r.t * 1000;
     let rmed = 0;
@@ -196,7 +177,6 @@ async function render() {
     const lp = r.s ? (r.s - r.r) / r.s * 100 : 0;
     if (lp > 0) lossBars.push([ts, lp]);
     if (r.b) { bursts++; burstPts.push([ts, lp, r.z || 0, r.s - r.r, r.s]); }
-    roundInfo[ts] = { med: rmed, lp, lost: r.s - r.r, s: r.s, b: r.b, z: r.z || 0 };
   });
   pool.sort((a,b)=>a-b);
   const q = p => pool.length ? pool[Math.min(pool.length-1, Math.floor(pool.length*p))] : 0;
@@ -218,47 +198,30 @@ async function render() {
     animation: false,
     grid: { left: 52, right: 46, top: 18, bottom: 42 },
     xAxis: { type: 'time', axisLine: { lineStyle: { color: cssv('--grid-axis') } },
-             axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } } },
+             axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } },
+             axisPointer: { show: true, snap: false,
+               lineStyle: { color: cssv('--dim'), opacity: .45 },
+               label: { show: true, backgroundColor: cssv('--panel'), color: cssv('--ink'),
+                        borderColor: cssv('--line'), borderWidth: 1, fontFamily: 'monospace', fontSize: 10,
+                        formatter: p => new Date(p.value).toLocaleTimeString() } } },
     yAxis: [
       { type: 'value', name: 'RTT ms', nameTextStyle: { color: cssv('--dim'), fontSize: 10 },
         axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } } },
       { type: 'value', max: 100, show: false }
     ],
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'cross',
-        lineStyle: { color: cssv('--dim'), opacity: .45 },
-        crossStyle: { color: cssv('--dim'), opacity: .45 },
-        label: { backgroundColor: cssv('--panel'), color: cssv('--ink'), borderColor: cssv('--line'),
-                 borderWidth: 1, fontFamily: 'monospace', fontSize: 10,
-                 formatter: p => p.axisDimension === 'x'
-                   ? new Date(p.value).toLocaleTimeString()
-                   : (+p.value).toFixed(1) } },
-      backgroundColor: cssv('--panel'), borderColor: cssv('--line'), borderWidth: 1,
-      padding: [8, 12], extraCssText: 'border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18)',
-      textStyle: { color: cssv('--ink'), fontSize: 12, fontFamily: 'monospace' },
-      formatter: params => {
-        const ts = params[0] && params[0].axisValue;
-        const info = roundInfo[ts];
-        if (!info) return '';
-        const t = new Date(+ts).toLocaleTimeString();
-        let html = `<b>${t}</b><br>median <b>${info.med.toFixed(1)} ms</b>`;
-        html += ` · loss <b>${info.lp.toFixed(1)}%</b> (${info.lost}/${info.s})`;
-        if (info.b) html += `<br><span style="color:${cssv('--alert')}">◆ burst · z-score ${info.z ? info.z.toFixed(2) : '—'}</span>`;
-        return html;
-      }
-    },
+    tooltip: { backgroundColor: cssv('--panel'), borderColor: cssv('--line'),
+               textStyle: { color: cssv('--ink'), fontSize: 11, fontFamily: 'monospace' } },
     // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗 —— 渐变即信息
-    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 1.0,
+    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
       seriesIndex: 0,
       inRange: { color: [cssv('--smoke-hot'), cssv('--smoke-mid'), cssv('--smoke-cool')],
-                 opacity: [0.55, 0.25] } },
+                 opacity: [0.5, 0.10] } },
     series: [
-      { type: 'scatter', data: smoke, symbolSize: 2.4, silent: true, progressive: 4000 },
+      { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, large: true },
       { type: 'line', data: median, showSymbol: false, silent: true, z: 4,
-        lineStyle: { color: phos, width: 3, opacity: 0.08 } },
+        lineStyle: { color: phos, width: 7, opacity: 0.10 } },
       { type: 'line', data: median, showSymbol: false,
-        lineStyle: { color: phos, width: 1.3, shadowColor: phos, shadowBlur: +cssv('--glow') * 2 }, z: 5 },
+        lineStyle: { color: phos, width: 1.6, shadowColor: phos, shadowBlur: +cssv('--glow') * 2 }, z: 5 },
       { type: 'bar', yAxisIndex: 1, data: lossBars, barMaxWidth: 3,
         itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1,
           [{ offset: 0, color: cssv('--alert') }, { offset: 1, color: cssv('--lossbar') }]) } },
@@ -289,7 +252,6 @@ setInterval(render, 60000);
 // P50 line, a P50–P99 band, loss bars and burst counts from server-side buckets.
 async function renderBand(t) {
   const rows = await (await fetch(`/api/band?target=${encodeURIComponent(current)}&days=${days}`)).json() || [];
-  if (seq !== renderSeq) return; // 过期响应:用户已切走
   const p50 = [], band = [], loss = [], bursts = [];
   let lossW = 0, nSum = 0, burstSum = 0, p99max = 0, p50W = 0, p90W = 0;
   rows.forEach(r => {
@@ -316,7 +278,12 @@ async function renderBand(t) {
     tooltip: { backgroundColor: cssv('--panel'), borderColor: cssv('--line'),
                textStyle: { color: cssv('--ink'), fontSize: 11, fontFamily: 'monospace' } },
     xAxis: { type: 'time', axisLine: { lineStyle: { color: cssv('--grid-axis') } },
-             axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } } },
+             axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } },
+             axisPointer: { show: true, snap: false,
+               lineStyle: { color: cssv('--dim'), opacity: .45 },
+               label: { show: true, backgroundColor: cssv('--panel'), color: cssv('--ink'),
+                        borderColor: cssv('--line'), borderWidth: 1, fontFamily: 'monospace', fontSize: 10,
+                        formatter: p => new Date(p.value).toLocaleTimeString() } } },
     yAxis: [
       { type: 'value', name: 'RTT ms', nameTextStyle: { color: cssv('--dim'), fontSize: 10 },
         axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } } },
