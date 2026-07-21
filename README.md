@@ -345,11 +345,9 @@ Friendly Links smokeping--- https://github.com/oetiker/SmokePing
 
 ## Design notes
 
-pingping 2.0 is deliberately a **local, read-only oscilloscope**: probes go in, JSONL text files
-sit on disk (300-day retention, deleted nightly), smoke graphs come out. No accounts, no push
-integrations, no database. Run `./pingping --localhost` and put Caddy/Nginx in front if you need
-auth or TLS. If you want alerting, multi-platform notifications, hot reload and tiered storage,
-that lives in the sibling project [fogping](https://github.com/githubflyideas/fogping).
+pingping  is a minimalist smokeping-like network oscilloscope: probes go in, JSONL text files sit on disk (300-day retention). It features a built-in, read-only Web UI with native auth—no external databases, Nginx, or Caddy required. Just scp and run.
+
+If you need alerting, multi-platform notifications, hot reload, or tiered storage, that lives in the sibling project fogping.
 
 ## License
 
