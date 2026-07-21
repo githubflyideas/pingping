@@ -18,12 +18,12 @@ cd pingping-v2.2.4-linux-amd64
 ```
 open http://localhost:8517 and watch your first puff of network smoke.
 
-### add target host 
+add target host 
 ```
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
  echo "10.0.0.5:443 ads-api"        >> targets/tcp.list
 ```
-### Data cleanup
+Data cleanup
 Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh` is all you need
 (data is plain per-day JSONL, so cleanup is just find+delete):
 
