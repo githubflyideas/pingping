@@ -13,11 +13,13 @@ A smokeping-like network tool.
 just scp and run
 
 open [Releases](https://github.com/githubflyideas/pingping/releases) 
-download pingping*.tar.gz
+
 ```bash
-tar xzf pingping-v*-linux-amd64.tar.gz
-mv pingping* pingping;
-cd pingping 
+cd /home
+wget https://github.com/githubflyideas/pingping/releases/download/v2.2.4/pingping-v2.2.4-linux-amd64.tar.gz
+
+tar xzf pingping-v2.2.4-linux-amd64.tar.gz
+cd pingping-v2.2.4-linux-amd64
 ./pingping user=admin passwd=admin
 ```
 open http://localhost:8517
