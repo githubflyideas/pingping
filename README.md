@@ -52,10 +52,10 @@ When you're back, open http://localhost:8517 and watch your first puff of networ
 ## 中文
 
 PingPing 是一款轻量级的网络链路质量绘图工具。它或许没有 Smokeping 那么强大、成熟，但它足够轻巧。
-
 单一可执行文件（Single Binary），下载即可使用，无需 Docker、无需 Root 权限、无需数据库。使用纯文本配置文件，可用任何文本编辑器修改监控目标，甚至一行 echo 指令即可完成。
 
 下载、解压、运行 ./pingping，然后去泡杯咖啡吧。回来打开 http://localhost:8517 看看你的第一缕网络烟雾！
+
 -------------------------------------------------------------------------------------------------
 PingPing 是一款輕量級的網路鏈路品質繪圖工具。
 它或許沒有 Smokeping 那麼強大、成熟，但它足夠輕巧。
