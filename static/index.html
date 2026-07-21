@@ -153,7 +153,7 @@ async function loadTargets() {
 
 let renderSeq = 0;
 async function render() {
-  renderSeq++;
+  const seq = ++renderSeq;
   await loadTargets();
   const t = targets.find(x => x.name === current);
   if (!t) return;
@@ -275,6 +275,7 @@ setInterval(render, 60000);
 // Long windows: smoke is a hot-data privilege — beyond 24h you get the
 // P50 line, a P50–P99 band, loss bars and burst counts from server-side buckets.
 async function renderBand(t) {
+  const seq = renderSeq;
   const rows = await (await fetch(`/api/band?target=${encodeURIComponent(current)}&days=${days}`)).json() || [];
   if (seq !== renderSeq) return; // 过期响应:已切走,丢弃
   const p50 = [], band = [], loss = [], bursts = [];
