@@ -161,6 +161,7 @@ async function render() {
   const smoke = [], median = [], lossBars = [], burstPts = [];
   let sent = 0, recv = 0, bursts = 0;
   const pool = [];
+  const roundInfo = {};
   rounds.forEach(r => {
     const ts = r.t * 1000;
     let rmed = 0;
@@ -177,6 +178,9 @@ async function render() {
     const lp = r.s ? (r.s - r.r) / r.s * 100 : 0;
     if (lp > 0) lossBars.push([ts, lp]);
     if (r.b) { bursts++; burstPts.push([ts, lp, r.z || 0, r.s - r.r, r.s]); }
+    const srt = (r.ms && r.ms.length) ? [...r.ms].sort((a,b)=>a-b) : [];
+    roundInfo[ts] = { med: rmed, lo: srt[0] || 0, hi: srt[srt.length-1] || 0,
+                      n: (r.ms || []).length, lp, lost: r.s - r.r, s: r.s, b: r.b, z: r.z || 0 };
   });
   pool.sort((a,b)=>a-b);
   const q = p => pool.length ? pool[Math.min(pool.length-1, Math.floor(pool.length*p))] : 0;
@@ -209,8 +213,19 @@ async function render() {
         axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } } },
       { type: 'value', max: 100, show: false }
     ],
-    tooltip: { backgroundColor: cssv('--panel'), borderColor: cssv('--line'),
-               textStyle: { color: cssv('--ink'), fontSize: 11, fontFamily: 'monospace' } },
+    tooltip: { trigger: 'axis',
+      backgroundColor: cssv('--panel'), borderColor: cssv('--line'),
+      textStyle: { color: cssv('--ink'), fontSize: 11, fontFamily: 'monospace' },
+      formatter: params => {
+        const ts = params[0] && params[0].axisValue;
+        const i = roundInfo[ts];
+        if (!i) return '';
+        let html = `<b>${new Date(+ts).toLocaleTimeString()}</b>`;
+        html += `<br>RTT median <b>${i.med.toFixed(1)} ms</b> · ${i.n} samples (${i.lo.toFixed(1)}–${i.hi.toFixed(1)})`;
+        html += `<br><span style="color:${i.lp > 0 ? cssv('--alert') : cssv('--dim')}">loss <b>${i.lp.toFixed(0)}%</b> (${i.lost}/${i.s})</span>`;
+        if (i.b) html += ` <span style="color:${cssv('--alert')}">· ◆ burst z=${i.z ? i.z.toFixed(2) : '—'}</span>`;
+        return html;
+      } },
     // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗 —— 渐变即信息
     visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
       seriesIndex: 0,
@@ -275,8 +290,19 @@ async function renderBand(t) {
   chart.setOption({
     animation: false,
     grid: { left: 52, right: 46, top: 18, bottom: 42 },
-    tooltip: { backgroundColor: cssv('--panel'), borderColor: cssv('--line'),
-               textStyle: { color: cssv('--ink'), fontSize: 11, fontFamily: 'monospace' } },
+    tooltip: { trigger: 'axis',
+      backgroundColor: cssv('--panel'), borderColor: cssv('--line'),
+      textStyle: { color: cssv('--ink'), fontSize: 11, fontFamily: 'monospace' },
+      formatter: params => {
+        const ts = params[0] && params[0].axisValue;
+        const i = roundInfo[ts];
+        if (!i) return '';
+        let html = `<b>${new Date(+ts).toLocaleTimeString()}</b>`;
+        html += `<br>RTT median <b>${i.med.toFixed(1)} ms</b> · ${i.n} samples (${i.lo.toFixed(1)}–${i.hi.toFixed(1)})`;
+        html += `<br><span style="color:${i.lp > 0 ? cssv('--alert') : cssv('--dim')}">loss <b>${i.lp.toFixed(0)}%</b> (${i.lost}/${i.s})</span>`;
+        if (i.b) html += ` <span style="color:${cssv('--alert')}">· ◆ burst z=${i.z ? i.z.toFixed(2) : '—'}</span>`;
+        return html;
+      } },
     xAxis: { type: 'time', axisLine: { lineStyle: { color: cssv('--grid-axis') } },
              axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } },
              axisPointer: { show: true, snap: false,
