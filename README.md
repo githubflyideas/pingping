@@ -7,8 +7,6 @@
 A smokeping-like network tool.
 just scp and run
 
-latest [Releases](https://github.com/githubflyideas/pingping/releases) 
-
 ```bash
 cd /home
 wget https://github.com/githubflyideas/pingping/releases/download/v2.2.4/pingping-v2.2.4-linux-amd64.tar.gz
@@ -25,7 +23,7 @@ open http://localhost:8517
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
  echo "10.0.0.5:443 ads-api"        >> targets/tcp.list
 ```
-                             
+latest [Releases](https://github.com/githubflyideas/pingping/releases)                              
 
 ## English
 
