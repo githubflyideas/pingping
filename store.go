@@ -213,6 +213,59 @@ func bucketRounds(rounds []Round, size int64) []BandRow {
 	return out
 }
 
+// ReadRange returns raw rounds in [from,to]. It reads the in-memory ring when the
+// range is recent, else falls back to per-day files on disk — so smoke can render
+// for any window inside the retention period, not just the last 24h.
+// maxPts>0 thins the result to about that many samples (stride keep) so a 30-day
+// window doesn't ship millions of points the browser can't draw.
+func (s *Store) ReadRange(name string, from, to int64, maxPts int) []Round {
+	var rounds []Round
+	// ring first (covers the recent tail cheaply)
+	s.mu.RLock()
+	ring := s.rings[name]
+	ringFrom := int64(1<<62)
+	if len(ring) > 0 {
+		ringFrom = ring[0].T
+	}
+	s.mu.RUnlock()
+
+	if from >= ringFrom {
+		rounds = s.Recent(name, from)
+	} else {
+		for d := time.Unix(from, 0); !d.After(time.Unix(to, 0)); d = d.AddDate(0, 0, 1) {
+			day, _ := s.readDay(name, d.Format("2006-01-02"))
+			rounds = append(rounds, day...)
+		}
+	}
+	// clip to [from,to]
+	out := rounds[:0]
+	for _, r := range rounds {
+		if r.T >= from && r.T <= to {
+			out = append(out, r)
+		}
+	}
+	return thin(out, maxPts)
+}
+
+// thin keeps roughly maxPts rounds by uniform stride. Rounds flagged as bursts are
+// always kept — an anomaly must never be sampled away.
+func thin(rounds []Round, maxPts int) []Round {
+	if maxPts <= 0 || len(rounds) <= maxPts {
+		return rounds
+	}
+	stride := (len(rounds) + maxPts - 1) / maxPts // ceil: 保证抽样后不超过 maxPts(突发除外)
+	if stride < 1 {
+		stride = 1
+	}
+	out := make([]Round, 0, maxPts+64)
+	for i, r := range rounds {
+		if i%stride == 0 || r.B {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 func (s *Store) readDay(name, day string) ([]Round, error) {
 	f, err := os.Open(s.dayFile(name, day))
 	if err != nil {

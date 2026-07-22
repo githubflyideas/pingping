@@ -147,14 +147,26 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 		writeJSON(w, out)
 	}))
 
-	// raw rounds for smoke (≤24h)
+	// raw rounds for smoke. Supports either minutes=N (recent window) or from/to unix
+	// (arbitrary range, e.g. box-select). maxpts thins long ranges to stay drawable.
 	mux.HandleFunc("/api/series", guard(func(w http.ResponseWriter, r *http.Request) {
-		name := r.URL.Query().Get("target")
-		minutes, _ := strconv.Atoi(r.URL.Query().Get("minutes"))
-		if minutes <= 0 || minutes > 1440 {
-			minutes = 360
+		q := r.URL.Query()
+		name := q.Get("target")
+		from, _ := strconv.ParseInt(q.Get("from"), 10, 64)
+		to, _ := strconv.ParseInt(q.Get("to"), 10, 64)
+		maxpts, _ := strconv.Atoi(q.Get("maxpts"))
+		if maxpts <= 0 || maxpts > 40000 {
+			maxpts = 12000 // ~one screen of smoke; keeps the browser smooth
 		}
-		writeJSON(w, store.Recent(name, time.Now().Add(-time.Duration(minutes)*time.Minute).Unix()))
+		if from == 0 || to == 0 {
+			minutes, _ := strconv.Atoi(q.Get("minutes"))
+			if minutes <= 0 || minutes > 43200 { // up to 30-day hot window
+				minutes = 360
+			}
+			to = time.Now().Unix()
+			from = to - int64(minutes)*60
+		}
+		writeJSON(w, store.ReadRange(name, from, to, maxpts))
 	}))
 
 	// aggregated buckets for long windows (7d/1M/3M/6M/all)
