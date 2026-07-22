@@ -1,0 +1,85 @@
+# GoReleaser — one config produces: cross-platform tarballs, .deb packages (apt/dpkg),
+# and an auto-updated Homebrew tap. No rpm. Zero-dependency single binary, so packaging
+# stays trivial. Run `goreleaser release` on tag push via CI.
+version: 2
+
+project_name: pingping
+
+before:
+  hooks:
+    - go test ./...
+
+builds:
+  - id: pingping
+    main: .
+    binary: pingping
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+# Tarballs for the "scp and run" crowd — unchanged experience, plus LICENSE and clean.sh.
+archives:
+  - id: tar
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - LICENSE
+      - clean.sh
+
+checksum:
+  name_template: "SHA256SUMS"
+
+# .deb only (apt / dpkg). Static binary → no dependencies, ships a systemd unit.
+nfpms:
+  - id: deb
+    package_name: pingping
+    formats: [deb]
+    maintainer: githubflyideas <githubflyideas@users.noreply.github.com>
+    description: Single-binary link quality oscilloscope (modern SmokePing alternative).
+    homepage: https://github.com/githubflyideas/pingping
+    license: Apache-2.0
+    bindir: /usr/bin
+    contents:
+      - src: clean.sh
+        dst: /usr/share/pingping/clean.sh
+      - src: packaging/pingping.service
+        dst: /lib/systemd/system/pingping.service
+        type: config
+
+# Homebrew: pushed to githubflyideas/homebrew-tap → `brew install githubflyideas/tap/pingping`.
+brews:
+  - name: pingping
+    repository:
+      owner: githubflyideas
+      name: homebrew-tap
+      token: "{{ .Env.TAP_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/githubflyideas/pingping
+    description: Single-binary link quality oscilloscope (modern SmokePing alternative).
+    license: Apache-2.0
+    install: |
+      bin.install "pingping"
+    test: |
+      system "#{bin}/pingping", "-version"
+
+release:
+  github:
+    owner: githubflyideas
+    name: pingping
+  header: |
+    ## Install
+
+    **Homebrew** (macOS/Linux):
+    ```bash
+    brew install githubflyideas/tap/pingping
+    ```
+    **Debian/Ubuntu** (.deb):
+    ```bash
+    dpkg -i pingping_*_linux_amd64.deb   # then: systemctl enable --now pingping
+    ```
+    **Or just scp and run** — download a tarball below, extract, `./pingping`. Zero dependencies.
