@@ -185,9 +185,6 @@ async function loadTargets() {
 }
 
 let sel = null; // {from,to} 框选时间段(unix 秒)
-// setOption 重建 dataZoom 组件时 ECharts 会自发一次 dataZoom 事件,
-// 那不是用户操作 —— 重绘期间关闸,避免"点档位反被框选回调劫持"的死循环。
-let redrawing = false;
 let renderSeq = 0;
 async function render() {
   const seq = ++renderSeq;
@@ -248,7 +245,6 @@ async function render() {
   $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${win} P99 ${pool.length ? q(.99).toFixed(1) : '–'} ms · loss ${lossPct.toFixed(2)}% · ${bursts} bursts`;
 
   const phos = cssv('--phos');
-  redrawing = true;
   chart.setOption({
     animation: false,
     grid: { left: 52, right: 46, top: 18, bottom: 56 },
@@ -305,13 +301,11 @@ async function render() {
         tooltip: { formatter: p => `◆ z-score ${p.value[2] ? p.value[2].toFixed(2) : '—'} · loss ${p.value[1].toFixed(0)}% (${p.value[3]}/${p.value[4]})` } }
     ]
   }, true);
-  setTimeout(() => { redrawing = false; }, 400); // 覆盖 ECharts 自发事件的窗口
 }
 
 // 图上拖拽框选一段时间 -> 精确查询那一段(dataZoom 的 datazoom 事件给出可视范围)
 let zoomTimer = null;
 chart.on('dataZoom', () => {
-  if (redrawing) return; // 程序重绘引发的,不是用户拖拽
   clearTimeout(zoomTimer);
   zoomTimer = setTimeout(() => {
     const opt = chart.getOption();
@@ -319,6 +313,12 @@ chart.on('dataZoom', () => {
     if (!dz || dz.startValue == null) return;
     const from = Math.floor(dz.startValue / 1000), to = Math.ceil(dz.endValue / 1000);
     if (to - from < 120) return; // 太窄忽略
+    // ECharts 在 setOption 重建 dataZoom 时会自发一次事件,其范围≈整个视图窗口。
+    // 用户真正拖拽总是选取子区间,所以覆盖 ~99% 视图宽度的事件视为组件重建,忽略。
+    const viewSpan = sel ? (sel.to - sel.from)
+      : days > 0 ? days * 86400
+      : minutes * 60;
+    if (viewSpan > 0 && (to - from) >= viewSpan * 0.99) return;
     sel = { from, to };
     $('selReset').style.display = '';
     render();
@@ -405,7 +405,6 @@ async function renderBand(t) {
   const win = days >= 300 ? 'all' : days >= 30 ? (days/30) + 'M' : days + 'd';
   $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${win} peak P99 ${p99max.toFixed(1)} ms · loss ${lp.toFixed(2)}% · ${burstSum} bursts`;
   const phos = cssv('--phos');
-  redrawing = true;
   chart.setOption({
     animation: false,
     grid: { left: 52, right: 46, top: 18, bottom: 42 },
@@ -450,7 +449,6 @@ async function renderBand(t) {
         tooltip: { formatter: p => `◆ ${p.value[2]} bursts · loss ${p.value[1].toFixed(1)}%` } }
     ]
   }, true);
-  setTimeout(() => { redrawing = false; }, 400); // 覆盖 ECharts 自发事件的窗口
 }
 
 $('themeBtn').onclick = () => {
