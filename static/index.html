@@ -337,12 +337,12 @@ async function renderInner(seq) {
         return html;
       } },
     // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗
-    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
+    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.35,
       seriesIndex: 0,
       inRange: { color: [cssv('--smoke-hot'), cssv('--smoke-mid'), cssv('--smoke-cool')],
-                 opacity: [0.5, 0.10] } },
+                 opacity: [0.55, 0.12] } },
     series: [
-      { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, large: true },
+      { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, progressive: 4000, progressiveThreshold: 2000 },
       { type: 'line', data: median, showSymbol: false, silent: true, z: 4,
         lineStyle: { color: phos, width: 7, opacity: 0.10 } },
       { type: 'line', data: median, showSymbol: false,
