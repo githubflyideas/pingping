@@ -1,5 +1,6 @@
-# GoReleaser — cross-platform tarballs + an auto-updated Homebrew tap. No apt/deb, no rpm.
-# Zero-dependency single binary; scp-and-run remains the primary path, brew is an extra.
+# GoReleaser — linux/amd64 only. SQLite (mattn/go-sqlite3) needs CGO, which rules out
+# cross-compiling to darwin and arm64 from the release runner. scp-and-run stays the
+# primary path; the Homebrew tap is gone with the macOS builds.
 version: 2
 
 project_name: pingping
@@ -13,13 +14,13 @@ builds:
     main: .
     binary: pingping
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     flags:
       - -trimpath
     ldflags:
       - -s -w -X main.version={{ .Version }}
-    goos: [linux, darwin]
-    goarch: [amd64, arm64]
+    goos: [linux]
+    goarch: [amd64]
 
 # Tarballs for the "scp and run" crowd — unchanged experience, plus LICENSE and clean.sh.
 archives:
@@ -34,22 +35,6 @@ checksum:
   name_template: "SHA256SUMS"
 
 
-# Homebrew: pushed to githubflyideas/homebrew-tap → `brew install githubflyideas/tap/pingping`.
-brews:
-  - name: pingping
-    repository:
-      owner: githubflyideas
-      name: homebrew-tap
-      token: "{{ .Env.TAP_TOKEN }}"
-    directory: Formula
-    homepage: https://github.com/githubflyideas/pingping
-    description: Single-binary link quality oscilloscope (modern SmokePing alternative).
-    license: Apache-2.0
-    install: |
-      bin.install "pingping"
-    test: |
-      system "#{bin}/pingping", "-version"
-
 release:
   github:
     owner: githubflyideas
@@ -57,8 +42,9 @@ release:
   header: |
     ## Install
 
-    **Homebrew** (macOS/Linux):
     ```bash
-    brew install githubflyideas/tap/pingping
+    tar xzf pingping-*-linux-amd64.tar.gz && ./pingping
     ```
-    **Or just scp and run** — download a tarball below, extract, `./pingping`. Zero dependencies.
+    Storage is SQLite; history is kept for 40 days by default (`--days=300` for longer).
+    linux/amd64 only in this release — SQLite needs CGO, so the other platforms are
+    not cross-compiled here.

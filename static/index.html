@@ -137,12 +137,16 @@
     <div class="rng">
       <button id="selReset" style="display:none;color:var(--amber)">✕ selection</button><span>TIME/DIV</span>
       <button data-m="60">1h</button>
-      <button data-m="360" class="on">6h</button>
-      <button data-m="720">12h</button>
-      <button data-m="1440">24h</button>
+      <button data-m="240" class="on">4h</button>
+      <button data-m="480">8h</button>
+      <button data-m="1440">1d</button>
+      <button data-m="4320">3d</button>
+      <button data-m="7200">5d</button>
       <button data-m="10080">7d</button>
+      <button data-m="20160">14d</button>
       <button data-m="43200">30d</button>
-      <button data-m="100800">70d</button>
+      <button data-m="86400">60d</button>
+      <button data-m="172800">120d</button>
       <button data-m="432000">300d</button>
     </div>
     <div class="rng custom">
@@ -186,7 +190,7 @@ function applyTheme() {
   const el = $('themeName'); if (el) el.textContent = theme;
 }
 applyTheme();
-let targets = [], current = null, minutes = 360, typeFilter = 'all';
+let targets = [], current = null, minutes = 240, typeFilter = 'all';
 
 // Deep link: /#t=NAME&m=1440 — send "this link, this window" to a colleague
 const hp = new URLSearchParams(location.hash.slice(1));
@@ -291,9 +295,7 @@ async function renderInner(seq) {
   $('bursts').textContent = bursts;
   $('bursts').className = 'v' + (bursts ? ' bad' : '');
 
-  const win = sel ? 'custom'
-    : minutes === 60 ? '1h' : minutes === 360 ? '6h' : minutes === 720 ? '12h'
-    : minutes === 1440 ? '24h' : minutes === 10080 ? '7d' : minutes === 43200 ? '30d' : minutes + 'm';
+  const win = sel ? 'custom' : (document.querySelector('.rng button[data-m].on')?.textContent || minutes + 'm');
   $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${win} P99 ${pool.length ? q(.99).toFixed(1) : '–'} ms · loss ${lossPct.toFixed(2)}% · ${bursts} bursts`;
 
   const phos = cssv('--phos');
@@ -337,12 +339,12 @@ async function renderInner(seq) {
         return html;
       } },
     // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗
-    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.35,
+    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
       seriesIndex: 0,
       inRange: { color: [cssv('--smoke-hot'), cssv('--smoke-mid'), cssv('--smoke-cool')],
-                 opacity: [0.55, 0.12] } },
+                 opacity: [0.5, 0.10] } },
     series: [
-      { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, progressive: 4000, progressiveThreshold: 2000 },
+      { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, large: true },
       { type: 'line', data: median, showSymbol: false, silent: true, z: 4,
         lineStyle: { color: phos, width: 7, opacity: 0.10 } },
       { type: 'line', data: median, showSymbol: false,
@@ -390,6 +392,13 @@ document.querySelectorAll('#tfilter button').forEach(b => b.onclick = () => {
 fetch('/api/version').then(r => r.json()).then(d => {
   const el = document.getElementById('ver');
   if (el && d.version) el.textContent = 'v' + d.version.replace(/^v/, '');
+  // 超出保留期的窗口按钮没有意义,直接藏起来 —— 用 --days 决定看得到多久
+  const keep = (d.retention_days || 0) * 1440;
+  if (keep > 0) {
+    document.querySelectorAll('.rng button[data-m]').forEach(b => {
+      if (+b.dataset.m > keep) b.style.display = 'none';
+    });
+  }
 }).catch(() => {});
 
 (function buildShare() {

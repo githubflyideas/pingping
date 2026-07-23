@@ -1,159 +1,159 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
-	"fmt"
+	"database/sql"
+	"encoding/binary"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
-// Store 三层文件哲学:
-//   内存环  — 最近 24h,出图和检测直接读,进程内飞行记录器
-//   原始层  — data/<target>/YYYY-MM-DD.jsonl,append-only,到期整文件删除
-//   汇总层  — data/summary/<target>.jsonl,每天一行,永久保留
-// 没有数据库。文本文件可以 grep、可以 tar、永远不会"坏得打不开"。
-
-const ringCap = 1440 // 24h @ 1min
+// Storage is SQLite with three tiers. Raw rounds keep every sample for recent days;
+// hourly and daily rollups keep the shape (min/p50/p90/p99/max/loss/bursts) for much
+// longer. A query picks the tier that fits the window, so any span — an hour or a
+// year — comes back as at most a few thousand rows and the browser never chokes.
+//
+// Why not plain files anymore: reading 45 days of JSONL took ~40s and shipped
+// millions of points to the browser. The tiering is the same idea SmokePing gets
+// from RRD, expressed in SQL so the data stays inspectable and exportable.
+const (
+	ringCap    = 1440 // in-memory flight recorder, ~24h at 1/min
+	hourlyFrom = 24 * time.Hour
+	dailyFrom  = 30 * 24 * time.Hour
+)
 
 type Store struct {
 	mu    sync.RWMutex
+	db    *sql.DB
 	dir   string
-	names []string          // 目标显示名(保序)
-	dirs  map[string]string // name -> 目录名
+	ids   map[string]int64 // target name -> row id
 	rings map[string][]Round
-	total uint64 // 本进程累计轮数(心跳用)
+	names []string
+	total uint64
 	start time.Time
+
+	wmu     sync.Mutex // serializes writes; SQLite takes one writer at a time
+	pending []pendingRound
+}
+
+type pendingRound struct {
+	id int64
+	r  Round
 }
 
 func NewStore(dir string, targets []TargetCfg) (*Store, error) {
-	s := &Store{dir: dir, dirs: map[string]string{}, rings: map[string][]Round{}, start: time.Now()}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, err
+	}
+	dbPath := filepath.Join(dir, "pingping.db")
+	db, err := sql.Open("sqlite3", dbPath+"?_busy_timeout=5000")
+	if err != nil {
+		return nil, err
+	}
+	// WAL lets the prober write while a long query reads; without it every probe
+	// would block on whatever chart someone has open.
+	for _, pragma := range []string{
+		"PRAGMA journal_mode = WAL",
+		"PRAGMA synchronous = NORMAL",
+		"PRAGMA temp_store = MEMORY",
+		"PRAGMA cache_size = -32000", // 32MB page cache
+	} {
+		if _, err := db.Exec(pragma); err != nil {
+			return nil, err
+		}
+	}
+	db.SetMaxOpenConns(4)
+
+	schema := `
+CREATE TABLE IF NOT EXISTS targets (
+  id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE
+);
+
+-- Raw rounds. Samples are a packed float32 blob: 4 bytes each instead of ~6 chars
+-- of JSON, and no parsing on read.
+CREATE TABLE IF NOT EXISTS rounds (
+  target_id INTEGER NOT NULL,
+  t         INTEGER NOT NULL,
+  sent      INTEGER NOT NULL,
+  recv      INTEGER NOT NULL,
+  samples   BLOB,
+  burst     INTEGER NOT NULL DEFAULT 0,
+  z         REAL    NOT NULL DEFAULT 0,
+  PRIMARY KEY (target_id, t)
+) WITHOUT ROWID;
+
+-- Rollups. Same columns at both resolutions so the query path is identical.
+CREATE TABLE IF NOT EXISTS rounds_hourly (
+  target_id INTEGER NOT NULL,
+  t         INTEGER NOT NULL,
+  lo REAL, p50 REAL, p90 REAL, p99 REAL, hi REAL,
+  loss_pct REAL, bursts INTEGER, n INTEGER,
+  PRIMARY KEY (target_id, t)
+) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS rounds_daily (
+  target_id INTEGER NOT NULL,
+  t         INTEGER NOT NULL,
+  lo REAL, p50 REAL, p90 REAL, p99 REAL, hi REAL,
+  loss_pct REAL, bursts INTEGER, n INTEGER,
+  PRIMARY KEY (target_id, t)
+) WITHOUT ROWID;
+`
+	if _, err := db.Exec(schema); err != nil {
+		return nil, err
+	}
+
+	s := &Store{
+		db:    db,
+		dir:   dir,
+		ids:   map[string]int64{},
+		rings: map[string][]Round{},
+		start: time.Now(),
+	}
 	for _, t := range targets {
-		s.names = append(s.names, t.Name)
-		s.dirs[t.Name] = t.dir
-		s.rings[t.Name] = nil
-		if err := os.MkdirAll(filepath.Join(dir, t.dir), 0o755); err != nil {
+		if err := s.EnsureTarget(t); err != nil {
 			return nil, err
 		}
 	}
 	return s, nil
 }
 
-func (s *Store) dayFile(name, day string) string {
-	s.mu.RLock()
-	dir := s.dirs[name]
-	s.mu.RUnlock()
-	return filepath.Join(s.dir, dir, day+".jsonl")
-}
+func (s *Store) Close() error { s.Flush(); return s.db.Close() }
 
-// Append 先落盘再进环:进程崩溃时宁可环里少一条,不可文件里丢一条。
-func (s *Store) Append(name string, r Round) error {
-	line, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
-	day := time.Unix(r.T, 0).Format("2006-01-02")
-	f, err := os.OpenFile(s.dayFile(name, day), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	if _, err = f.Write(append(line, '\n')); err != nil {
-		f.Close()
-		return err
-	}
-	f.Close()
-
-	s.mu.Lock()
-	ring := append(s.rings[name], r)
-	if len(ring) > ringCap {
-		ring = ring[len(ring)-ringCap:]
-	}
-	s.rings[name] = ring
-	s.total++
-	s.mu.Unlock()
-	return nil
-}
-
-// Replay 开机回放昨天+今天的文件,重建飞行记录器。
-func (s *Store) Replay() {
-	days := []string{
-		time.Now().AddDate(0, 0, -1).Format("2006-01-02"),
-		time.Now().Format("2006-01-02"),
-	}
-	cut := time.Now().Add(-24 * time.Hour).Unix()
-	for _, name := range s.names {
-		var ring []Round
-		for _, day := range days {
-			f, err := os.Open(s.dayFile(name, day))
-			if err != nil {
-				continue
-			}
-			sc := bufio.NewScanner(f)
-			sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-			for sc.Scan() {
-				var r Round
-				if json.Unmarshal(sc.Bytes(), &r) == nil && r.T >= cut {
-					ring = append(ring, r)
-				}
-			}
-			f.Close()
-		}
-		if len(ring) > ringCap {
-			ring = ring[len(ring)-ringCap:]
-		}
-		s.mu.Lock()
-		s.rings[name] = ring
-		s.mu.Unlock()
-		if len(ring) > 0 {
-			log.Printf("[%s] replayed %d rounds", name, len(ring))
-		}
-	}
-}
-
-// Recent 返回 since 之后的轮(拷贝,调用方随便用)。
-func (s *Store) Recent(name string, since int64) []Round {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	ring := s.rings[name]
-	i := sort.Search(len(ring), func(i int) bool { return ring[i].T >= since })
-	out := make([]Round, len(ring)-i)
-	copy(out, ring[i:])
-	return out
-}
-
-func (s *Store) Names() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return append([]string(nil), s.names...)
-}
-
-// EnsureTarget / RemoveTarget: storage side of hot reload. Removal only drops
-// the in-memory ring; data files stay on disk.
+// EnsureTarget registers a target, creating its row if new.
 func (s *Store) EnsureTarget(t TargetCfg) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.rings[t.Name]; ok {
+	if _, ok := s.ids[t.Name]; ok {
 		return nil
 	}
-	if err := os.MkdirAll(filepath.Join(s.dir, t.dir), 0o755); err != nil {
+	if _, err := s.db.Exec(`INSERT OR IGNORE INTO targets(name) VALUES(?)`, t.Name); err != nil {
 		return err
 	}
-	s.dirs[t.Name] = t.dir
+	var id int64
+	if err := s.db.QueryRow(`SELECT id FROM targets WHERE name = ?`, t.Name).Scan(&id); err != nil {
+		return err
+	}
+	s.ids[t.Name] = id
 	s.rings[t.Name] = nil
 	s.names = append(s.names, t.Name)
 	return nil
 }
 
+// RemoveTarget drops it from the live set; stored rows are kept.
 func (s *Store) RemoveTarget(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.rings, name)
+	delete(s.ids, name)
 	for i, n := range s.names {
 		if n == name {
 			s.names = append(s.names[:i], s.names[i+1:]...)
@@ -162,61 +162,10 @@ func (s *Store) RemoveTarget(name string) {
 	}
 }
 
-// ReadRange reads raw rounds in [from,to]. ctx lets a long read stop early when the
-// browser navigates away: without it, clicking through targets leaves every abandoned
-// query still chewing through day files, and they starve each other.
-func (s *Store) ReadRange(ctx context.Context, name string, from, to int64) []Round {
-	var rounds []Round
-	// ring first (covers the recent tail cheaply)
+func (s *Store) Names() []string {
 	s.mu.RLock()
-	ring := s.rings[name]
-	ringFrom := int64(1 << 62)
-	if len(ring) > 0 {
-		ringFrom = ring[0].T
-	}
-	s.mu.RUnlock()
-
-	if from >= ringFrom {
-		rounds = s.Recent(name, from)
-	} else {
-		for d := time.Unix(from, 0); !d.After(time.Unix(to, 0)); d = d.AddDate(0, 0, 1) {
-			select {
-			case <-ctx.Done(): // client went away — stop reading, drop what we have
-				return []Round{}
-			default:
-			}
-			day, _ := s.readDay(name, d.Format("2006-01-02"))
-			rounds = append(rounds, day...)
-		}
-	}
-	// clip to [from,to]. Always allocate: reusing rounds[:0] returns nil when rounds
-	// is nil, which serializes as JSON null and blanks the chart instead of drawing
-	// an empty window.
-	out := make([]Round, 0, len(rounds))
-	for _, r := range rounds {
-		if r.T >= from && r.T <= to {
-			out = append(out, r)
-		}
-	}
-	return out
-}
-
-func (s *Store) readDay(name, day string) ([]Round, error) {
-	f, err := os.Open(s.dayFile(name, day))
-	if err != nil {
-		return nil, nil
-	}
-	defer f.Close()
-	var out []Round
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for sc.Scan() {
-		var r Round
-		if json.Unmarshal(sc.Bytes(), &r) == nil {
-			out = append(out, r)
-		}
-	}
-	return out, nil
+	defer s.mu.RUnlock()
+	return append([]string(nil), s.names...)
 }
 
 func (s *Store) Counters() (uint64, time.Time) {
@@ -225,7 +174,326 @@ func (s *Store) Counters() (uint64, time.Time) {
 	return s.total, s.start
 }
 
-// Stats 对一组轮做分布统计。这里是"存分布不存均值"兑现的地方。
+// packSamples stores RTTs as float32 — 0.01ms resolution is far beyond what any
+// network measurement means, and it halves the blob.
+func packSamples(ms []float64) []byte {
+	b := make([]byte, 4*len(ms))
+	for i, v := range ms {
+		binary.LittleEndian.PutUint32(b[i*4:], math.Float32bits(float32(v)))
+	}
+	return b
+}
+
+func unpackSamples(b []byte) []float64 {
+	out := make([]float64, len(b)/4)
+	for i := range out {
+		out[i] = round2(float64(math.Float32frombits(binary.LittleEndian.Uint32(b[i*4:]))))
+	}
+	return out
+}
+
+// Append buffers the round and flushes in batches: one fsync per round would cap
+// throughput far below what a few dozen targets need.
+func (s *Store) Append(name string, r Round) error {
+	s.mu.Lock()
+	id, ok := s.ids[name]
+	if ok {
+		ring := append(s.rings[name], r)
+		if len(ring) > ringCap {
+			ring = append([]Round(nil), ring[len(ring)-ringCap:]...)
+		}
+		s.rings[name] = ring
+		s.total++
+	}
+	s.mu.Unlock()
+	if !ok {
+		return nil
+	}
+
+	s.wmu.Lock()
+	s.pending = append(s.pending, pendingRound{id: id, r: r})
+	n := len(s.pending)
+	s.wmu.Unlock()
+	// Batch when rounds arrive in bursts, but never sit on data: with a handful of
+	// targets a size-only threshold would hold writes for minutes, losing them on a
+	// crash and leaving the chart empty right after startup.
+	if n >= 16 {
+		return s.Flush()
+	}
+	return nil
+}
+
+// flushLoop commits whatever is buffered every couple of seconds.
+func (s *Store) flushLoop(stop <-chan struct{}) {
+	tick := time.NewTicker(2 * time.Second)
+	defer tick.Stop()
+	for {
+		select {
+		case <-stop:
+			s.Flush()
+			return
+		case <-tick.C:
+			if err := s.Flush(); err != nil {
+				log.Printf("flush: %v", err)
+			}
+		}
+	}
+}
+
+// Flush writes buffered rounds in one transaction.
+func (s *Store) Flush() error {
+	s.wmu.Lock()
+	batch := s.pending
+	s.pending = nil
+	s.wmu.Unlock()
+	if len(batch) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	stmt, err := tx.Prepare(`INSERT OR REPLACE INTO rounds(target_id,t,sent,recv,samples,burst,z)
+	                          VALUES(?,?,?,?,?,?,?)`)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	for _, p := range batch {
+		b := 0
+		if p.r.B {
+			b = 1
+		}
+		if _, err := stmt.Exec(p.id, p.r.T, p.r.S, p.r.R, packSamples(p.r.MS), b, p.r.Z); err != nil {
+			stmt.Close()
+			tx.Rollback()
+			return err
+		}
+	}
+	stmt.Close()
+	return tx.Commit()
+}
+
+// Replay rebuilds the in-memory ring from the last 24h on startup.
+func (s *Store) Replay() {
+	cut := time.Now().Add(-24 * time.Hour).Unix()
+	for _, name := range s.Names() {
+		rounds := s.queryRaw(context.Background(), name, cut, time.Now().Unix())
+		if len(rounds) > ringCap {
+			rounds = rounds[len(rounds)-ringCap:]
+		}
+		s.mu.Lock()
+		s.rings[name] = rounds
+		s.mu.Unlock()
+		if len(rounds) > 0 {
+			log.Printf("[%s] replayed %d rounds", name, len(rounds))
+		}
+	}
+}
+
+// Recent serves the flight recorder — no disk, no SQL.
+func (s *Store) Recent(name string, since int64) []Round {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	ring := s.rings[name]
+	i := sort.Search(len(ring), func(i int) bool { return ring[i].T >= since })
+	return append([]Round(nil), ring[i:]...)
+}
+
+// ReadRange picks a tier by window width. Under a day: raw samples, real smoke.
+// Up to a month: hourly rollups. Beyond: daily. Every path returns []Round, so
+// callers and the front end never learn which tier answered.
+func (s *Store) ReadRange(ctx context.Context, name string, from, to int64) []Round {
+	span := time.Duration(to-from) * time.Second
+	switch {
+	case span <= hourlyFrom:
+		return s.queryRaw(ctx, name, from, to)
+	case span <= dailyFrom:
+		return s.queryRollup(ctx, "rounds_hourly", name, from, to)
+	default:
+		return s.queryRollup(ctx, "rounds_daily", name, from, to)
+	}
+}
+
+func (s *Store) targetID(name string) (int64, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	id, ok := s.ids[name]
+	return id, ok
+}
+
+func (s *Store) queryRaw(ctx context.Context, name string, from, to int64) []Round {
+	id, ok := s.targetID(name)
+	if !ok {
+		return []Round{}
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT t,sent,recv,samples,burst,z FROM rounds
+		  WHERE target_id=? AND t BETWEEN ? AND ? ORDER BY t`, id, from, to)
+	if err != nil {
+		log.Printf("query raw: %v", err)
+		return []Round{}
+	}
+	defer rows.Close()
+	out := []Round{}
+	for rows.Next() {
+		var r Round
+		var blob []byte
+		var b int
+		if err := rows.Scan(&r.T, &r.S, &r.R, &blob, &b, &r.Z); err != nil {
+			break
+		}
+		r.MS = unpackSamples(blob)
+		r.B = b != 0
+		out = append(out, r)
+	}
+	return out
+}
+
+// queryRollup reshapes an aggregate row into a Round whose MS carries the five
+// shape values. The chart draws them exactly like raw samples — the smoke just
+// gets sparser the further back you look, which is what SmokePing does too.
+func (s *Store) queryRollup(ctx context.Context, table, name string, from, to int64) []Round {
+	id, ok := s.targetID(name)
+	if !ok {
+		return []Round{}
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT t,lo,p50,p90,p99,hi,loss_pct,bursts,n FROM `+table+`
+		  WHERE target_id=? AND t BETWEEN ? AND ? ORDER BY t`, id, from, to)
+	if err != nil {
+		log.Printf("query %s: %v", table, err)
+		return []Round{}
+	}
+	defer rows.Close()
+	out := []Round{}
+	for rows.Next() {
+		var t int64
+		var lo, p50, p90, p99, hi, loss float64
+		var bursts, n int
+		if err := rows.Scan(&t, &lo, &p50, &p90, &p99, &hi, &loss, &bursts, &n); err != nil {
+			break
+		}
+		sent := n
+		if sent == 0 {
+			sent = 1
+		}
+		out = append(out, Round{
+			T: t, S: sent, R: sent - int(float64(sent)*loss/100+0.5),
+			MS: []float64{lo, p50, p90, p99, hi},
+			B:  bursts > 0,
+		})
+	}
+	return out
+}
+
+// Rollup recomputes aggregates for a period. Cheap enough to just redo the recent
+// window on every run rather than track what changed.
+func (s *Store) Rollup(since int64) error {
+	for _, spec := range []struct{ table, unit string }{
+		{"rounds_hourly", "3600"},
+		{"rounds_daily", "86400"},
+	} {
+		q := `INSERT OR REPLACE INTO ` + spec.table + `
+	(target_id,t,lo,p50,p90,p99,hi,loss_pct,bursts,n)
+	SELECT target_id, (t/` + spec.unit + `)*` + spec.unit + `,
+	       0,0,0,0,0,
+	       100.0*(SUM(sent)-SUM(recv))/MAX(SUM(sent),1),
+	       SUM(burst), COUNT(*)
+	  FROM rounds WHERE t >= ?
+	 GROUP BY target_id, t/` + spec.unit
+		if _, err := s.db.Exec(q, since); err != nil {
+			return err
+		}
+	}
+	return s.rollupPercentiles(since)
+}
+
+// rollupPercentiles fills the shape columns. Percentiles need the samples
+// themselves, so this pass reads raw rounds per bucket — still far cheaper than
+// doing it at query time, and it happens once an hour.
+func (s *Store) rollupPercentiles(since int64) error {
+	for _, spec := range []struct {
+		table string
+		unit  int64
+	}{
+		{"rounds_hourly", 3600},
+		{"rounds_daily", 86400},
+	} {
+		rows, err := s.db.Query(
+			`SELECT target_id, (t/?)*?, samples FROM rounds WHERE t >= ? ORDER BY target_id, t`,
+			spec.unit, spec.unit, since)
+		if err != nil {
+			return err
+		}
+		type key struct {
+			id int64
+			b  int64
+		}
+		buckets := map[key][]float64{}
+		for rows.Next() {
+			var id, bucket int64
+			var blob []byte
+			if err := rows.Scan(&id, &bucket, &blob); err != nil {
+				break
+			}
+			buckets[key{id, bucket}] = append(buckets[key{id, bucket}], unpackSamples(blob)...)
+		}
+		rows.Close()
+
+		tx, err := s.db.Begin()
+		if err != nil {
+			return err
+		}
+		stmt, err := tx.Prepare(`UPDATE ` + spec.table + `
+		    SET lo=?,p50=?,p90=?,p99=?,hi=? WHERE target_id=? AND t=?`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		for k, vals := range buckets {
+			if len(vals) == 0 {
+				continue
+			}
+			sort.Float64s(vals)
+			q := func(p float64) float64 {
+				i := int(float64(len(vals)-1) * p)
+				return round2(vals[i])
+			}
+			if _, err := stmt.Exec(q(0), q(0.5), q(0.9), q(0.99), q(1), k.id, k.b); err != nil {
+				stmt.Close()
+				tx.Rollback()
+				return err
+			}
+		}
+		stmt.Close()
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Retention deletes raw rounds past rawDays and rollups past keepDays. Rollups are
+// tiny, so they can outlive the raw data by a long way.
+func (s *Store) Retention(rawDays, keepDays int) {
+	if rawDays > 0 {
+		cut := time.Now().AddDate(0, 0, -rawDays).Unix()
+		if res, err := s.db.Exec(`DELETE FROM rounds WHERE t < ?`, cut); err == nil {
+			if n, _ := res.RowsAffected(); n > 0 {
+				log.Printf("retention: dropped %d raw rounds older than %dd", n, rawDays)
+			}
+		}
+	}
+	if keepDays > 0 {
+		cut := time.Now().AddDate(0, 0, -keepDays).Unix()
+		s.db.Exec(`DELETE FROM rounds_hourly WHERE t < ?`, cut)
+		s.db.Exec(`DELETE FROM rounds_daily WHERE t < ?`, cut)
+	}
+}
+
+func round2(f float64) float64 { return float64(int(f*100+0.5)) / 100 }
+
 type Stats struct {
 	Rounds  int     `json:"rounds"`
 	P50     float64 `json:"p50"`
@@ -273,129 +541,3 @@ func pct(sorted []float64, p float64) float64 {
 // The round itself is preserved — same timestamp, same sent/recv counts, same burst
 // flag and z-score — so cold data flows through the exact same code path as hot data.
 // Only the within-round redundancy is dropped: on a month-wide axis those 20-30
-// samples land in the same pixel column anyway.
-func downsampleRound(r Round) Round {
-	if len(r.MS) <= 4 {
-		return r // already small enough
-	}
-	sorted := append([]float64(nil), r.MS...)
-	sort.Float64s(sorted)
-	n := len(sorted)
-	r.MS = []float64{
-		round2(sorted[0]),
-		round2(sorted[n/2]),
-		round2(sorted[int(float64(n)*0.9)]),
-		round2(sorted[n-1]),
-	}
-	return r
-}
-
-// Downsample rewrites one day file in place with per-round downsampling. Files are
-// rewritten atomically via a temp file so a crash cannot leave a half-written day.
-func (s *Store) Downsample(name, day string) error {
-	rounds, err := s.readDay(name, day)
-	if err != nil || len(rounds) == 0 {
-		return err
-	}
-	// already downsampled? cheap check on the first round
-	if len(rounds[0].MS) <= 4 {
-		return nil
-	}
-	path := s.dayFile(name, day)
-	tmp := path + ".tmp"
-	f, err := os.Create(tmp)
-	if err != nil {
-		return err
-	}
-	for _, r := range rounds {
-		line, err := json.Marshal(downsampleRound(r))
-		if err != nil {
-			f.Close()
-			os.Remove(tmp)
-			return err
-		}
-		if _, err := f.Write(append(line, byte(10))); err != nil {
-			f.Close()
-			os.Remove(tmp)
-			return err
-		}
-	}
-	if err := f.Close(); err != nil {
-		os.Remove(tmp)
-		return err
-	}
-	return os.Rename(tmp, path)
-}
-
-// Tier runs nightly: day files older than hotDays get downsampled in place, files
-// older than keepDays are deleted. One pass, no separate cold directory — the
-// tiering is invisible above the storage layer.
-func (s *Store) Tier(hotDays, keepDays int) {
-	hotCut := time.Now().AddDate(0, 0, -hotDays).Format("2006-01-02")
-	keepCut := time.Now().AddDate(0, 0, -keepDays).Format("2006-01-02")
-	s.mu.RLock()
-	names := make([]string, 0, len(s.dirs))
-	for n := range s.dirs {
-		names = append(names, n)
-	}
-	s.mu.RUnlock()
-
-	for _, name := range names {
-		s.mu.RLock()
-		dir := s.dirs[name]
-		s.mu.RUnlock()
-		entries, err := os.ReadDir(filepath.Join(s.dir, dir))
-		if err != nil {
-			continue
-		}
-		for _, e := range entries {
-			fn := e.Name()
-			if len(fn) < 10 || strings.HasSuffix(fn, ".tmp") {
-				continue
-			}
-			day := fn[:10]
-			switch {
-			case day < keepCut:
-				os.Remove(filepath.Join(s.dir, dir, fn))
-				log.Printf("retention: removed %s/%s", dir, fn)
-			case day < hotCut:
-				if err := s.Downsample(name, day); err != nil {
-					log.Printf("downsample %s/%s failed: %v", dir, day, err)
-				}
-			}
-		}
-	}
-}
-
-func (s *Store) Retention(days int) {
-	if days <= 0 {
-		return
-	}
-	cut := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
-	for _, dir := range s.dirs {
-		entries, err := os.ReadDir(filepath.Join(s.dir, dir))
-		if err != nil {
-			continue
-		}
-		for _, e := range entries {
-			day := e.Name()
-			if len(day) >= 10 && day[:10] < cut {
-				os.Remove(filepath.Join(s.dir, dir, e.Name()))
-				log.Printf("retention: removed %s/%s", dir, e.Name())
-			}
-		}
-	}
-}
-
-func round2(f float64) float64 { return float64(int(f*100+0.5)) / 100 }
-
-func fmtDur(d time.Duration) string {
-	d = d.Round(time.Minute)
-	if d < time.Hour {
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	}
-	if d < 24*time.Hour {
-		return fmt.Sprintf("%dh%dm", int(d.Hours()), int(d.Minutes())%60)
-	}
-	return fmt.Sprintf("%dd%dh", int(d.Hours())/24, int(d.Hours())%24)
-}

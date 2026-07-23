@@ -1,7 +1,7 @@
 package main
 
 import (
-		"fmt"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -29,8 +29,8 @@ func defaultConfig() *Config {
 		DataDir:       "./data",
 		TargetsDir:    "./targets",
 		Probe:         ProbeCfg{IntervalSec: 60, Packets: 20, GapMs: 50, TimeoutMs: 1000},
-		HotDays:       30,
-		RetentionDays: 300,
+		HotDays:       2,  // raw samples: enough for the sub-day windows
+		RetentionDays: 40, // hourly rollups; --days overrides
 	}
 }
 
@@ -98,7 +98,6 @@ func validateTargets(cfg *Config) error {
 	}
 	return nil
 }
-
 
 // loadTargetLists reads targets/ping.list and tcp.list.
 // line format: host[:port]  [name...]  [pace=fast|slow] [interval=sec]
@@ -169,4 +168,3 @@ func parseListLine(line, typ string) (TargetCfg, error) {
 	}
 	return t, nil
 }
-
