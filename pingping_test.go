@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"math"
+	"os"
 	"testing"
 	"time"
 )
@@ -170,4 +171,43 @@ func TestTierSelection(t *testing.T) {
 		t.Fatalf("hourly tier should be denser than daily: %d vs %d", len(mid), len(long))
 	}
 	t.Logf("rows returned — 6h:%d  10d:%d  40d:%d", len(short), len(mid), len(long))
+}
+
+// Deleting rows must actually hand disk back, not just mark pages reusable.
+func TestReclaimShrinksFile(t *testing.T) {
+	dir := t.TempDir()
+	s, err := NewStore(dir, []TargetCfg{{Name: "R", Type: "icmp", Host: "1.1.1.1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	// write a chunk of history, then flush
+	now := time.Now().Unix()
+	ms := make([]float64, 20)
+	for i := range ms {
+		ms[i] = 40 + float64(i)
+	}
+	for i := 0; i < 60000; i++ {
+		s.Append("R", Round{T: now - int64(i)*60, S: 20, R: 20, MS: ms})
+	}
+	s.Flush()
+
+	dbPath := dir + "/pingping.db"
+	before, err := os.Stat(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// drop nearly all of it
+	if _, err := s.db.Exec(`DELETE FROM rounds WHERE t < ?`, now-60); err != nil {
+		t.Fatal(err)
+	}
+	s.reclaim()
+
+	after, _ := os.Stat(dbPath)
+	t.Logf("db size: %d KB -> %d KB", before.Size()/1024, after.Size()/1024)
+	if after.Size() >= before.Size() {
+		t.Fatalf("file did not shrink: %d -> %d", before.Size(), after.Size())
+	}
 }

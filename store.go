@@ -60,6 +60,9 @@ func NewStore(dir string, targets []TargetCfg) (*Store, error) {
 	// WAL lets the prober write while a long query reads; without it every probe
 	// would block on whatever chart someone has open.
 	for _, pragma := range []string{
+		// INCREMENTAL lets reclaim() hand pages back later; it must be set before any
+		// table exists, which is why it leads this list.
+		"PRAGMA auto_vacuum = INCREMENTAL",
 		"PRAGMA journal_mode = WAL",
 		"PRAGMA synchronous = NORMAL",
 		"PRAGMA temp_store = MEMORY",
@@ -490,6 +493,42 @@ func (s *Store) Retention(rawDays, keepDays int) {
 		s.db.Exec(`DELETE FROM rounds_hourly WHERE t < ?`, cut)
 		s.db.Exec(`DELETE FROM rounds_daily WHERE t < ?`, cut)
 	}
+	s.reclaim()
+}
+
+// reclaim returns freed pages to the filesystem. SQLite marks deleted space reusable
+// but keeps the file at its high-water mark, so a box that once held 300 days would
+// never shrink after switching to a shorter window — surprising on the small hosts
+// this build targets. incremental_vacuum does it in bounded steps, unlike a full
+// VACUUM which rewrites the whole database and needs twice the space.
+func (s *Store) reclaim() {
+	// SQLite keeps deleted space inside the file: mark it reusable, never give it
+	// back. On a host that ran with a long window and then switched to a short one
+	// the file would stay at its high-water mark forever, which is a bad surprise on
+	// the small boxes this build is meant for.
+	//
+	// incremental_vacuum only frees a handful of pages per transaction in WAL mode,
+	// so it never catches up. A full VACUUM rebuilds the file and returns everything;
+	// at a few MB that costs well under a second, and it runs once a night.
+	if _, err := s.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
+		log.Printf("reclaim checkpoint: %v", err)
+	}
+	var freelist, pageSize int
+	if err := s.db.QueryRow(`PRAGMA freelist_count`).Scan(&freelist); err != nil {
+		return
+	}
+	s.db.QueryRow(`PRAGMA page_size`).Scan(&pageSize)
+	if freelist*pageSize < 4<<20 { // under 4MB of slack: leave it alone
+		return
+	}
+	if _, err := s.db.Exec(`VACUUM`); err != nil {
+		log.Printf("reclaim vacuum: %v", err)
+		return
+	}
+	// VACUUM rebuilds through the WAL; without a second checkpoint the main file
+	// keeps its old size and nothing looks reclaimed.
+	s.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`)
+	log.Printf("reclaim: vacuumed, %d free pages returned to the filesystem", freelist)
 }
 
 func round2(f float64) float64 { return float64(int(f*100+0.5)) / 100 }

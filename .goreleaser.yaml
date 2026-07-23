@@ -25,14 +25,14 @@ builds:
     goos: [linux]
     goarch: [amd64]
 
-# Tarballs for the "scp and run" crowd — unchanged experience, plus LICENSE and clean.sh.
+# Tarballs for the "scp and run" crowd. No clean.sh: storage is SQLite now and
+# retention is handled in-process by --days.
 archives:
   - id: tar
     formats: [tar.gz]
     name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     files:
       - LICENSE
-      - clean.sh
 
 checksum:
   name_template: "SHA256SUMS"
