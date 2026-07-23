@@ -247,15 +247,7 @@ async function render() {
   const phos = cssv('--phos');
   chart.setOption({
     animation: false,
-    grid: { left: 52, right: 46, top: 18, bottom: 56 },
-    dataZoom: [
-      { type: 'inside', filterMode: 'none' },
-      { type: 'slider', height: 16, bottom: 8, filterMode: 'none',
-        borderColor: cssv('--line'), fillerColor: 'color-mix(in srgb, var(--phos) 12%, transparent)',
-        handleStyle: { color: cssv('--phos') }, moveHandleStyle: { color: cssv('--dim') },
-        dataBackground: { lineStyle: { color: cssv('--dim') }, areaStyle: { color: cssv('--grid-split') } },
-        textStyle: { color: cssv('--dim'), fontSize: 9 } }
-    ],
+    grid: { left: 52, right: 46, top: 18, bottom: 42 },
     xAxis: { type: 'time', axisLine: { lineStyle: { color: cssv('--grid-axis') } },
              axisLabel: { color: cssv('--dim'), fontSize: 10 }, splitLine: { lineStyle: { color: cssv('--grid-split') } },
              axisPointer: { show: true, snap: false,
@@ -303,27 +295,6 @@ async function render() {
   }, true);
 }
 
-// 图上拖拽框选一段时间 -> 精确查询那一段(dataZoom 的 datazoom 事件给出可视范围)
-let zoomTimer = null;
-chart.on('dataZoom', () => {
-  clearTimeout(zoomTimer);
-  zoomTimer = setTimeout(() => {
-    const opt = chart.getOption();
-    const dz = opt.dataZoom && opt.dataZoom[0];
-    if (!dz || dz.startValue == null) return;
-    const from = Math.floor(dz.startValue / 1000), to = Math.ceil(dz.endValue / 1000);
-    if (to - from < 120) return; // 太窄忽略
-    // ECharts 在 setOption 重建 dataZoom 时会自发一次事件,其范围≈整个视图窗口。
-    // 用户真正拖拽总是选取子区间,所以覆盖 ~99% 视图宽度的事件视为组件重建,忽略。
-    const viewSpan = sel ? (sel.to - sel.from)
-      : days > 0 ? days * 86400
-      : minutes * 60;
-    if (viewSpan > 0 && (to - from) >= viewSpan * 0.99) return;
-    sel = { from, to };
-    $('selReset').style.display = '';
-    render();
-  }, 350);
-});
 
 document.querySelectorAll('.rng button[data-m], .rng button[data-d]').forEach(b => b.onclick = () => {
   sel = null; $('selReset').style.display = 'none';
