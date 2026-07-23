@@ -115,6 +115,10 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 		writeJSON(w, map[string]bool{"ok": true})
 	})
 
+	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]string{"version": version})
+	})
+
 	mux.HandleFunc("/api/targets", guard(func(w http.ResponseWriter, r *http.Request) {
 		now := time.Now()
 		type item struct {
@@ -160,7 +164,7 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 		to, _ := strconv.ParseInt(q.Get("to"), 10, 64)
 		if from == 0 || to == 0 {
 			minutes, _ := strconv.Atoi(q.Get("minutes"))
-			if minutes <= 0 || minutes > 259200 { // up to 180 days
+			if minutes <= 0 || minutes > 100800 { // up to 70 days
 				minutes = 360
 			}
 			to = time.Now().Unix()

@@ -28,7 +28,7 @@ func defaultConfig() *Config {
 		DataDir:       "./data",
 		TargetsDir:    "./targets",
 		Probe:         ProbeCfg{IntervalSec: 60, Packets: 20, GapMs: 50, TimeoutMs: 1000},
-		RetentionDays: 300,
+		RetentionDays: 70,
 	}
 }
 
