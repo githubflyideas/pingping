@@ -160,68 +160,7 @@ func (s *Store) RemoveTarget(name string) {
 	}
 }
 
-// BandRow: one aggregated bucket for windows beyond the 24h smoke range.
-type BandRow struct {
-	T      int64   `json:"t"`
-	P50    float64 `json:"p50"`
-	P90    float64 `json:"p90"`
-	P99    float64 `json:"p99"`
-	Loss   float64 `json:"loss"`
-	Bursts int     `json:"b,omitempty"`
-	N      int     `json:"n"`
-}
-
-// BandSeries aggregates raw day files into fixed-width buckets. Bucket width is
-// hardcoded per window so long ranges stay cheap: 7d→10min, 30d→30min, 90d→2h,
-// 180d/all→4h. Reading a season of JSONL takes a moment; it is a manual click.
-func (s *Store) BandSeries(name string, days int) []BandRow {
-	bucket := int64(600)
-	switch {
-	case days > 90:
-		bucket = 14400
-	case days > 30:
-		bucket = 7200
-	case days > 7:
-		bucket = 1800
-	}
-	rows := []BandRow{} // never nil
-	for i := days; i >= 0; i-- {
-		day := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
-		rounds, _ := s.readDay(name, day)
-		if len(rounds) == 0 {
-			continue
-		}
-		rows = append(rows, bucketRounds(rounds, bucket)...)
-	}
-	return rows
-}
-
-func bucketRounds(rounds []Round, size int64) []BandRow {
-	buckets := map[int64][]Round{}
-	for _, r := range rounds {
-		k := r.T / size * size
-		buckets[k] = append(buckets[k], r)
-	}
-	keys := make([]int64, 0, len(buckets))
-	for k := range buckets {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-	out := make([]BandRow, 0, len(keys))
-	for _, k := range keys {
-		st := calcStats(buckets[k])
-		out = append(out, BandRow{T: k, P50: round2(st.P50), P90: round2(st.P90),
-			P99: round2(st.P99), Loss: round2(st.LossPct), Bursts: st.Bursts, N: st.Rounds})
-	}
-	return out
-}
-
-// ReadRange returns raw rounds in [from,to]. It reads the in-memory ring when the
-// range is recent, else falls back to per-day files on disk — so smoke can render
-// for any window inside the retention period, not just the last 24h.
-// maxPts>0 thins the result to about that many samples (stride keep) so a 30-day
-// window doesn't ship millions of points the browser can't draw.
-func (s *Store) ReadRange(name string, from, to int64, maxPts int) []Round {
+func (s *Store) ReadRange(name string, from, to int64) []Round {
 	var rounds []Round
 	// ring first (covers the recent tail cheaply)
 	s.mu.RLock()
@@ -246,28 +185,6 @@ func (s *Store) ReadRange(name string, from, to int64, maxPts int) []Round {
 	out := make([]Round, 0, len(rounds))
 	for _, r := range rounds {
 		if r.T >= from && r.T <= to {
-			out = append(out, r)
-		}
-	}
-	return thin(out, maxPts)
-}
-
-// thin keeps roughly maxPts rounds by uniform stride. Rounds flagged as bursts are
-// always kept — an anomaly must never be sampled away.
-func thin(rounds []Round, maxPts int) []Round {
-	if rounds == nil {
-		return []Round{} // never nil: JSON null blanks the chart
-	}
-	if maxPts <= 0 || len(rounds) <= maxPts {
-		return rounds
-	}
-	stride := (len(rounds) + maxPts - 1) / maxPts // ceil: 保证抽样后不超过 maxPts(突发除外)
-	if stride < 1 {
-		stride = 1
-	}
-	out := make([]Round, 0, maxPts+64)
-	for i, r := range rounds {
-		if i%stride == 0 || r.B {
 			out = append(out, r)
 		}
 	}

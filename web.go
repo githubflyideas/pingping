@@ -152,35 +152,23 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 	}))
 
 	// raw rounds for smoke. Supports either minutes=N (recent window) or from/to unix
-	// (arbitrary range, e.g. box-select). maxpts thins long ranges to stay drawable.
+	// (arbitrary range). No thinning: every sample is returned as stored.
 	mux.HandleFunc("/api/series", guard(func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		name := q.Get("target")
 		from, _ := strconv.ParseInt(q.Get("from"), 10, 64)
 		to, _ := strconv.ParseInt(q.Get("to"), 10, 64)
-		maxpts, _ := strconv.Atoi(q.Get("maxpts"))
-		if maxpts <= 0 || maxpts > 40000 {
-			maxpts = 12000 // ~one screen of smoke; keeps the browser smooth
-		}
 		if from == 0 || to == 0 {
 			minutes, _ := strconv.Atoi(q.Get("minutes"))
-			if minutes <= 0 || minutes > 43200 { // up to 30-day hot window
+			if minutes <= 0 || minutes > 259200 { // up to 180 days
 				minutes = 360
 			}
 			to = time.Now().Unix()
 			from = to - int64(minutes)*60
 		}
-		writeJSON(w, store.ReadRange(name, from, to, maxpts))
+		writeJSON(w, store.ReadRange(name, from, to))
 	}))
 
-	// aggregated buckets for long windows (7d/1M/3M/6M/all)
-	mux.HandleFunc("/api/band", guard(func(w http.ResponseWriter, r *http.Request) {
-		days, _ := strconv.Atoi(r.URL.Query().Get("days"))
-		if days <= 0 || days > 300 {
-			days = 300
-		}
-		writeJSON(w, store.BandSeries(r.URL.Query().Get("target"), days))
-	}))
 
 	return http.ListenAndServe(cfg.Listen, mux)
 }
