@@ -166,7 +166,17 @@ if (hp.get('m') && [60,360,720,1440].includes(+hp.get('m'))) minutes = +hp.get('
 if (hp.get('t')) current = hp.get('t');
 document.querySelectorAll('.rng button[data-m]').forEach(b => b.classList.toggle('on', +b.dataset.m === minutes));
 
-const chart = echarts.init($('chart'));
+let chart = echarts.init($('chart'));
+let chartMode = null; // 'smoke' | 'band' —— 视图类型切换时销毁重建实例,
+                      // 避免 visualMap 等组件在 notMerge 重建时状态错乱导致图不重绘。
+function useChart(mode) {
+  if (chartMode !== mode) {
+    chart.dispose();
+    chart = echarts.init($('chart'));
+    chartMode = mode;
+  }
+  return chart;
+}
 
 async function loadTargets() {
   targets = await (await fetch('/api/targets')).json() || [];
@@ -255,7 +265,7 @@ async function renderInner(seq) {
   $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${win} P99 ${pool.length ? q(.99).toFixed(1) : '–'} ms · loss ${lossPct.toFixed(2)}% · ${bursts} bursts`;
 
   const phos = cssv('--phos');
-  chart.setOption({
+  useChart('smoke').setOption({
     animation: false,
     grid: { left: 52, right: 46, top: 18, bottom: 42 },
     xAxis: { type: 'time', axisLine: { lineStyle: { color: cssv('--grid-axis') } },
@@ -385,7 +395,7 @@ async function renderBand(t, seq) {
   const win = days >= 300 ? 'all' : days >= 30 ? (days/30) + 'M' : days + 'd';
   $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${win} peak P99 ${p99max.toFixed(1)} ms · loss ${lp.toFixed(2)}% · ${burstSum} bursts`;
   const phos = cssv('--phos');
-  chart.setOption({
+  useChart('band').setOption({
     animation: false,
     grid: { left: 52, right: 46, top: 18, bottom: 42 },
     tooltip: { trigger: 'axis',
@@ -437,7 +447,7 @@ $('themeBtn').onclick = () => {
   applyTheme();
   render();
 };
-window.addEventListener('resize', () => chart.resize());
+window.addEventListener('resize', () => chart && chart.resize());
 </script>
 </body>
 </html>

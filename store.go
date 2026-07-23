@@ -184,7 +184,7 @@ func (s *Store) BandSeries(name string, days int) []BandRow {
 	case days > 7:
 		bucket = 1800
 	}
-	var rows []BandRow
+	rows := []BandRow{} // never nil
 	for i := days; i >= 0; i-- {
 		day := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
 		rounds, _ := s.readDay(name, day)
@@ -240,8 +240,10 @@ func (s *Store) ReadRange(name string, from, to int64, maxPts int) []Round {
 			rounds = append(rounds, day...)
 		}
 	}
-	// clip to [from,to]
-	out := rounds[:0]
+	// clip to [from,to]. Always allocate: reusing rounds[:0] returns nil when rounds
+	// is nil, which serializes as JSON null and blanks the chart instead of drawing
+	// an empty window.
+	out := make([]Round, 0, len(rounds))
 	for _, r := range rounds {
 		if r.T >= from && r.T <= to {
 			out = append(out, r)
@@ -253,6 +255,9 @@ func (s *Store) ReadRange(name string, from, to int64, maxPts int) []Round {
 // thin keeps roughly maxPts rounds by uniform stride. Rounds flagged as bursts are
 // always kept — an anomaly must never be sampled away.
 func thin(rounds []Round, maxPts int) []Round {
+	if rounds == nil {
+		return []Round{} // never nil: JSON null blanks the chart
+	}
 	if maxPts <= 0 || len(rounds) <= maxPts {
 		return rounds
 	}
