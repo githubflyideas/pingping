@@ -6,9 +6,13 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -115,6 +119,31 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 		writeJSON(w, map[string]bool{"ok": true})
 	})
 
+	// Default theme, stored next to the data so it survives restarts and follows the
+	// install rather than one browser. GET returns it; POST saves it.
+	themeFile := filepath.Join(cfg.DataDir, "theme")
+	mux.HandleFunc("/api/theme", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			body, _ := io.ReadAll(io.LimitReader(r.Body, 32))
+			name := strings.TrimSpace(string(body))
+			for _, c := range name {
+				if !(c >= 'a' && c <= 'z') { // whitelist: theme ids are lowercase letters
+					http.Error(w, `{"error":"bad theme"}`, http.StatusBadRequest)
+					return
+				}
+			}
+			if name == "" {
+				http.Error(w, `{"error":"bad theme"}`, http.StatusBadRequest)
+				return
+			}
+			os.WriteFile(themeFile, []byte(name), 0o644)
+			writeJSON(w, map[string]string{"theme": name})
+			return
+		}
+		b, _ := os.ReadFile(themeFile)
+		writeJSON(w, map[string]string{"theme": strings.TrimSpace(string(b))})
+	})
+
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"version": version})
 	})
@@ -172,7 +201,6 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 		}
 		writeJSON(w, store.ReadRange(name, from, to))
 	}))
-
 
 	return http.ListenAndServe(cfg.Listen, mux)
 }

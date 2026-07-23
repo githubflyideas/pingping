@@ -30,6 +30,33 @@
     --smoke:rgba(11,114,133,.18); --lossbar:rgba(209,67,63,.5); --glow:0;
     --smoke-hot:#064a57; --smoke-mid:#1596ad; --smoke-cool:#b3722f;
   }
+  /* Amber: the old amber-phosphor CRT — warm orange trace on near-black */
+  html[data-theme="amber"] {
+    --bg:#0c0a06; --panel:#16120b; --screen:#080602; --line:#2a2115;
+    --phos:#ffb340; --amber:#ffd28a; --alert:#ff6b4a; --ink:#e8d5b0; --dim:#8a7550;
+    --grid-axis:#3a2e1c; --grid-split:#1e1810;
+    --smoke:rgba(255,179,64,.16); --lossbar:rgba(255,107,74,.5); --glow:7;
+    --smoke-hot:#fff0d0; --smoke-mid:#ffb340; --smoke-cool:#8a6020;
+    --shadow:0 1px 2px rgba(0,0,0,.6); --shadow-lg:0 10px 30px rgba(0,0,0,.5);
+  }
+  /* Mono: high-contrast black on white — for printing and bright rooms */
+  html[data-theme="mono"] {
+    --bg:#ffffff; --panel:#fbfbfb; --screen:#ffffff; --line:#d8d8d8;
+    --phos:#111111; --amber:#666666; --alert:#c00000; --ink:#111111; --dim:#777777;
+    --grid-axis:#c8c8c8; --grid-split:#ededed;
+    --smoke:rgba(17,17,17,.22); --lossbar:rgba(192,0,0,.45); --glow:0;
+    --smoke-hot:#000000; --smoke-mid:#444444; --smoke-cool:#999999;
+    --shadow:0 1px 2px rgba(0,0,0,.08); --shadow-lg:0 8px 24px rgba(0,0,0,.10);
+  }
+  /* Midnight: deep blue, low blue-light glare for night shifts */
+  html[data-theme="midnight"] {
+    --bg:#0a0e1a; --panel:#111726; --screen:#070a14; --line:#1e2740;
+    --phos:#6db3ff; --amber:#ffc857; --alert:#ff5c7a; --ink:#c3d2e8; --dim:#5a6b85;
+    --grid-axis:#243050; --grid-split:#131a2c;
+    --smoke:rgba(109,179,255,.16); --lossbar:rgba(255,92,122,.5); --glow:6;
+    --smoke-hot:#e8f4ff; --smoke-mid:#6db3ff; --smoke-cool:#3a5580;
+    --shadow:0 1px 2px rgba(0,0,0,.5); --shadow-lg:0 10px 30px rgba(0,0,0,.45);
+  }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--ink); font-family:var(--mono); padding:18px 22px; }
   header { display:flex; align-items:baseline; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
@@ -85,6 +112,7 @@
   <div class="mark">pingping ●</div>
   <div class="tag">One binary. One graph. Zero guesswork.</div>
   <button class="pill" id="themeBtn" title="switch theme" style="margin-left:auto">◐ <span id="themeName">dark</span></button>
+  <button class="pill" id="themeSave" title="save this theme as the default for everyone on this install">save as default</button>
 </header>
 
 <div class="row">
@@ -97,7 +125,7 @@
 </div>
 
 <div class="scope">
-  <div class="crt"><div id="chart"></div><canvas id="smokeCv"></canvas></div>
+  <div class="crt"><div id="chart"></div></div>
   <div class="readouts">
     <div class="ro"><div class="v" id="p50">–</div><div class="l">P50 MS</div></div>
     <div class="ro"><div class="v" id="p90">–</div><div class="l">P90 MS</div></div>
@@ -148,9 +176,17 @@
 <script>
 const $ = id => document.getElementById(id);
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const THEMES = ['dark', 'daylight', 'arctic'];
+const THEMES = ['dark', 'daylight', 'arctic', 'amber', 'mono', 'midnight'];
 let theme = localStorage.getItem('pp_theme') || 'dark';
 if (!THEMES.includes(theme)) theme = 'dark';
+// 本地没手动选过 -> 跟随服务端保存的默认主题
+if (!localStorage.getItem('pp_theme')) {
+  fetch('/api/theme').then(r => r.json()).then(d => {
+    if (d.theme && THEMES.includes(d.theme) && d.theme !== theme) {
+      theme = d.theme; applyTheme(); render();
+    }
+  }).catch(() => {});
+}
 function applyTheme() {
   if (theme === 'dark') delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = theme;
@@ -168,81 +204,6 @@ document.querySelectorAll('.rng button[data-m]').forEach(b => b.classList.toggle
 const chart = echarts.init($('chart'));
 
 
-// 自绘烟雾层:ECharts 的散点图在几十万点就吃不消,因为它给每个点维护状态。
-// 烟雾不需要单点命中(tooltip 按轮显示),所以直接写像素缓冲 —— 百万点也是一次遍历。
-function drawSmoke(rounds) {
-  const cv = $('smokeCv'), box = $('chart');
-  const W = box.clientWidth, H = box.clientHeight;
-  const dpr = window.devicePixelRatio || 1;
-  cv.width = W * dpr; cv.height = H * dpr;
-  cv.style.width = W + 'px'; cv.style.height = H + 'px';
-  const ctx = cv.getContext('2d');
-  ctx.clearRect(0, 0, cv.width, cv.height);
-  if (!rounds.length) return;
-
-  // 与 ECharts 网格对齐(grid: left 52, right 46, top 18, bottom 42)
-  const gl = 52 * dpr, gr = 46 * dpr, gt = 18 * dpr, gb = 42 * dpr;
-  const plotW = cv.width - gl - gr, plotH = cv.height - gt - gb;
-  if (plotW <= 0 || plotH <= 0) return;
-
-  // 用 ECharts 当前的坐标范围,保证两层严丝合缝
-  const opt = chart.getOption();
-  const yAxis = opt.yAxis && opt.yAxis[0];
-  const t0 = rounds[0].t * 1000, t1 = rounds[rounds.length - 1].t * 1000;
-  const yMin = yAxis && yAxis.min != null ? yAxis.min : 0;
-  let yMax = yAxis && yAxis.max != null ? yAxis.max : 0;
-  if (!yMax) { // 回退:自己算上界
-    for (const r of rounds) for (const v of (r.ms || [])) if (v > yMax) yMax = v;
-    yMax *= 1.05;
-  }
-  const tSpan = Math.max(1, t1 - t0), ySpan = Math.max(1e-6, yMax - yMin);
-
-  // 逐点写 ImageData:比 fillRect 快一个数量级
-  const img = ctx.createImageData(cv.width, cv.height);
-  const buf = img.data;
-  const hot = hexToRgb(cssv('--smoke-hot')), mid = hexToRgb(cssv('--smoke-mid')), cool = hexToRgb(cssv('--smoke-cool'));
-
-  for (const r of rounds) {
-    const ms = r.ms;
-    if (!ms || !ms.length) continue;
-    const x = gl + (r.t * 1000 - t0) / tSpan * plotW;
-    if (x < 0 || x >= cv.width) continue;
-    // 该轮中位数用于着色:贴线的亮,散开的冷
-    const srt = ms.length > 2 ? [...ms].sort((a, b) => a - b) : ms;
-    const med = srt[Math.floor(srt.length / 2)];
-    for (const v of ms) {
-      const y = gt + plotH - (v - yMin) / ySpan * plotH;
-      if (y < 0 || y >= cv.height) continue;
-      const dev = med ? Math.min(1, Math.abs(v - med) / med / 0.5) : 0;
-      const c = dev < 0.5 ? lerp(hot, mid, dev * 2) : lerp(mid, cool, (dev - 0.5) * 2);
-      const a = Math.round((0.5 - dev * 0.4) * 255);
-      const xi = x | 0, yi = y | 0;
-      for (let dx = 0; dx < 2; dx++) for (let dy = 0; dy < 2; dy++) { // 2x2 让点可见
-        const px = xi + dx, py = yi + dy;
-        if (px >= cv.width || py >= cv.height) continue;
-        const idx = (py * cv.width + px) * 4;
-        // 叠加混合:重叠越多越亮,这正是烟雾的质感
-        buf[idx] = Math.min(255, buf[idx] + c[0] * a / 255);
-        buf[idx + 1] = Math.min(255, buf[idx + 1] + c[1] * a / 255);
-        buf[idx + 2] = Math.min(255, buf[idx + 2] + c[2] * a / 255);
-        buf[idx + 3] = Math.min(255, buf[idx + 3] + a);
-      }
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-}
-
-function hexToRgb(h) {
-  h = (h || '#7ce38b').trim();
-  if (h[0] === '#') h = h.slice(1);
-  if (h.length === 3) h = h.split('').map(c => c + c).join('');
-  const n = parseInt(h, 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-function lerp(a, b, t) {
-  t = Math.max(0, Math.min(1, t));
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-}
 
 async function loadTargets() {
   targets = await (await fetch('/api/targets')).json() || [];
@@ -261,7 +222,6 @@ async function loadTargets() {
 }
 
 let sel = null; // {from,to} 自定义查询区间(unix 秒)
-let lastRounds = [];
 let renderSeq = 0;
 let rendering = false; // 一次渲染(含慢速 band 查询)是否仍在进行
 async function render() {
@@ -370,7 +330,13 @@ async function renderInner(seq) {
         if (i.b) html += ` <span style="color:${cssv('--alert')}">· ◆ burst z=${i.z ? i.z.toFixed(2) : '—'}</span>`;
         return html;
       } },
+    // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗
+    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
+      seriesIndex: 0,
+      inRange: { color: [cssv('--smoke-hot'), cssv('--smoke-mid'), cssv('--smoke-cool')],
+                 opacity: [0.5, 0.10] } },
     series: [
+      { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, large: true },
       { type: 'line', data: median, showSymbol: false, silent: true, z: 4,
         lineStyle: { color: phos, width: 7, opacity: 0.10 } },
       { type: 'line', data: median, showSymbol: false,
@@ -383,8 +349,6 @@ async function renderInner(seq) {
         tooltip: { formatter: p => `◆ z-score ${p.value[2] ? p.value[2].toFixed(2) : '—'} · loss ${p.value[1].toFixed(0)}% (${p.value[3]}/${p.value[4]})` } }
     ]
   }, true);
-  drawSmoke(rounds); // ECharts 画完坐标轴后叠加烟雾层
-  lastRounds = rounds;
 }
 
 
@@ -454,7 +418,16 @@ $('themeBtn').onclick = () => {
   applyTheme();
   render();
 };
-window.addEventListener('resize', () => { if (chart) { chart.resize(); drawSmoke(lastRounds); } });
+$('themeSave').onclick = async () => {
+  const btn = $('themeSave'), old = btn.textContent;
+  try {
+    await fetch('/api/theme', { method: 'POST', body: theme });
+    btn.textContent = 'saved ✓';
+  } catch { btn.textContent = 'failed'; }
+  setTimeout(() => { btn.textContent = old; }, 1500);
+};
+
+window.addEventListener('resize', () => chart && chart.resize());
 </script>
 </body>
 </html>
