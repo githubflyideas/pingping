@@ -97,7 +97,7 @@
 </div>
 
 <div class="scope">
-  <div class="crt"><div id="chart"></div></div>
+  <div class="crt"><div id="chart"></div><canvas id="smokeCv"></canvas></div>
   <div class="readouts">
     <div class="ro"><div class="v" id="p50">–</div><div class="l">P50 MS</div></div>
     <div class="ro"><div class="v" id="p90">–</div><div class="l">P90 MS</div></div>
@@ -114,6 +114,7 @@
       <button data-m="10080">7d</button>
       <button data-m="43200">30d</button>
       <button data-m="100800">70d</button>
+      <button data-m="432000">300d</button>
     </div>
     <div class="rng custom">
       <input type="datetime-local" id="customFrom" step="60">
@@ -166,6 +167,83 @@ document.querySelectorAll('.rng button[data-m]').forEach(b => b.classList.toggle
 
 const chart = echarts.init($('chart'));
 
+
+// 自绘烟雾层:ECharts 的散点图在几十万点就吃不消,因为它给每个点维护状态。
+// 烟雾不需要单点命中(tooltip 按轮显示),所以直接写像素缓冲 —— 百万点也是一次遍历。
+function drawSmoke(rounds) {
+  const cv = $('smokeCv'), box = $('chart');
+  const W = box.clientWidth, H = box.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!rounds.length) return;
+
+  // 与 ECharts 网格对齐(grid: left 52, right 46, top 18, bottom 42)
+  const gl = 52 * dpr, gr = 46 * dpr, gt = 18 * dpr, gb = 42 * dpr;
+  const plotW = cv.width - gl - gr, plotH = cv.height - gt - gb;
+  if (plotW <= 0 || plotH <= 0) return;
+
+  // 用 ECharts 当前的坐标范围,保证两层严丝合缝
+  const opt = chart.getOption();
+  const yAxis = opt.yAxis && opt.yAxis[0];
+  const t0 = rounds[0].t * 1000, t1 = rounds[rounds.length - 1].t * 1000;
+  const yMin = yAxis && yAxis.min != null ? yAxis.min : 0;
+  let yMax = yAxis && yAxis.max != null ? yAxis.max : 0;
+  if (!yMax) { // 回退:自己算上界
+    for (const r of rounds) for (const v of (r.ms || [])) if (v > yMax) yMax = v;
+    yMax *= 1.05;
+  }
+  const tSpan = Math.max(1, t1 - t0), ySpan = Math.max(1e-6, yMax - yMin);
+
+  // 逐点写 ImageData:比 fillRect 快一个数量级
+  const img = ctx.createImageData(cv.width, cv.height);
+  const buf = img.data;
+  const hot = hexToRgb(cssv('--smoke-hot')), mid = hexToRgb(cssv('--smoke-mid')), cool = hexToRgb(cssv('--smoke-cool'));
+
+  for (const r of rounds) {
+    const ms = r.ms;
+    if (!ms || !ms.length) continue;
+    const x = gl + (r.t * 1000 - t0) / tSpan * plotW;
+    if (x < 0 || x >= cv.width) continue;
+    // 该轮中位数用于着色:贴线的亮,散开的冷
+    const srt = ms.length > 2 ? [...ms].sort((a, b) => a - b) : ms;
+    const med = srt[Math.floor(srt.length / 2)];
+    for (const v of ms) {
+      const y = gt + plotH - (v - yMin) / ySpan * plotH;
+      if (y < 0 || y >= cv.height) continue;
+      const dev = med ? Math.min(1, Math.abs(v - med) / med / 0.5) : 0;
+      const c = dev < 0.5 ? lerp(hot, mid, dev * 2) : lerp(mid, cool, (dev - 0.5) * 2);
+      const a = Math.round((0.5 - dev * 0.4) * 255);
+      const xi = x | 0, yi = y | 0;
+      for (let dx = 0; dx < 2; dx++) for (let dy = 0; dy < 2; dy++) { // 2x2 让点可见
+        const px = xi + dx, py = yi + dy;
+        if (px >= cv.width || py >= cv.height) continue;
+        const idx = (py * cv.width + px) * 4;
+        // 叠加混合:重叠越多越亮,这正是烟雾的质感
+        buf[idx] = Math.min(255, buf[idx] + c[0] * a / 255);
+        buf[idx + 1] = Math.min(255, buf[idx + 1] + c[1] * a / 255);
+        buf[idx + 2] = Math.min(255, buf[idx + 2] + c[2] * a / 255);
+        buf[idx + 3] = Math.min(255, buf[idx + 3] + a);
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function hexToRgb(h) {
+  h = (h || '#7ce38b').trim();
+  if (h[0] === '#') h = h.slice(1);
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function lerp(a, b, t) {
+  t = Math.max(0, Math.min(1, t));
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
 async function loadTargets() {
   targets = await (await fetch('/api/targets')).json() || [];
   const kinds = new Set(targets.map(t => t.type));
@@ -183,6 +261,7 @@ async function loadTargets() {
 }
 
 let sel = null; // {from,to} 自定义查询区间(unix 秒)
+let lastRounds = [];
 let renderSeq = 0;
 let rendering = false; // 一次渲染(含慢速 band 查询)是否仍在进行
 async function render() {
@@ -291,13 +370,7 @@ async function renderInner(seq) {
         if (i.b) html += ` <span style="color:${cssv('--alert')}">· ◆ burst z=${i.z ? i.z.toFixed(2) : '—'}</span>`;
         return html;
       } },
-    // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗 —— 渐变即信息
-    visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
-      seriesIndex: 0,
-      inRange: { color: [cssv('--smoke-hot'), cssv('--smoke-mid'), cssv('--smoke-cool')],
-                 opacity: [0.5, 0.10] } },
     series: [
-      { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, large: true },
       { type: 'line', data: median, showSymbol: false, silent: true, z: 4,
         lineStyle: { color: phos, width: 7, opacity: 0.10 } },
       { type: 'line', data: median, showSymbol: false,
@@ -310,6 +383,8 @@ async function renderInner(seq) {
         tooltip: { formatter: p => `◆ z-score ${p.value[2] ? p.value[2].toFixed(2) : '—'} · loss ${p.value[1].toFixed(0)}% (${p.value[3]}/${p.value[4]})` } }
     ]
   }, true);
+  drawSmoke(rounds); // ECharts 画完坐标轴后叠加烟雾层
+  lastRounds = rounds;
 }
 
 
@@ -379,7 +454,7 @@ $('themeBtn').onclick = () => {
   applyTheme();
   render();
 };
-window.addEventListener('resize', () => chart && chart.resize());
+window.addEventListener('resize', () => { if (chart) { chart.resize(); drawSmoke(lastRounds); } });
 </script>
 </body>
 </html>

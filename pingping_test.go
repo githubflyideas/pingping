@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"encoding/json"
+	"os"
+	"testing"
+	"time"
+)
 
 func TestParseListLine(t *testing.T) {
 	tt, err := parseListLine("59.43.247.1 HK CN2 pace=fast", "icmp")
@@ -94,4 +99,62 @@ func FuzzRobustZ(f *testing.F) {
 			t.Fatalf("NaN: x=%v series=%v", x, series)
 		}
 	})
+}
+
+func TestDownsampleRound(t *testing.T) {
+	ms := make([]float64, 20)
+	for i := range ms {
+		ms[i] = float64(i + 1) // 1..20
+	}
+	in := Round{T: 1234567890, S: 20, R: 18, MS: ms, B: true, Z: 3.42}
+	out := downsampleRound(in)
+
+	if len(out.MS) != 4 {
+		t.Fatalf("want 4 samples, got %d", len(out.MS))
+	}
+	// min / median / p90 / max preserved in order
+	if out.MS[0] != 1 || out.MS[3] != 20 {
+		t.Fatalf("min/max wrong: %v", out.MS)
+	}
+	if out.MS[1] < out.MS[0] || out.MS[2] < out.MS[1] || out.MS[3] < out.MS[2] {
+		t.Fatalf("not sorted: %v", out.MS)
+	}
+	// everything else must survive untouched — this is what keeps one code path
+	if out.T != in.T || out.S != in.S || out.R != in.R || out.B != in.B || out.Z != in.Z {
+		t.Fatalf("metadata lost: %+v", out)
+	}
+	// idempotent: downsampling twice changes nothing
+	if again := downsampleRound(out); len(again.MS) != 4 || again.MS[0] != out.MS[0] {
+		t.Fatalf("not idempotent: %v", again.MS)
+	}
+}
+
+func TestTierDownsamplesOldDays(t *testing.T) {
+	dir := t.TempDir()
+	s, err := NewStore(dir, []TargetCfg{{Name: "X", Type: "icmp", Host: "1.1.1.1", dir: "X"}})
+	if err != nil { t.Fatal(err) }
+	old := time.Now().AddDate(0, 0, -40).Format("2006-01-02")
+	recent := time.Now().AddDate(0, 0, -5).Format("2006-01-02")
+	ms := make([]float64, 20)
+	for i := range ms { ms[i] = float64(i + 30) }
+	for _, day := range []string{old, recent} {
+		f, _ := os.Create(dir + "/X/" + day + ".jsonl")
+		for i := 0; i < 10; i++ {
+			line, _ := json.Marshal(Round{T: time.Now().Unix() - int64(i*60), S: 20, R: 20, MS: ms})
+			f.Write(append(line, byte(10)))
+		}
+		f.Close()
+	}
+	s.Tier(30, 300)
+	oldRounds, _ := s.readDay("X", old)
+	newRounds, _ := s.readDay("X", recent)
+	if len(oldRounds) == 0 || len(oldRounds[0].MS) != 4 {
+		t.Fatalf("old day should be downsampled to 4 samples, got %d", len(oldRounds[0].MS))
+	}
+	if len(newRounds) == 0 || len(newRounds[0].MS) != 20 {
+		t.Fatalf("recent day must keep all samples, got %d", len(newRounds[0].MS))
+	}
+	if len(oldRounds) != 10 {
+		t.Fatalf("round count must survive downsampling: %d", len(oldRounds))
+	}
 }

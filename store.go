@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -259,6 +260,104 @@ func pct(sorted []float64, p float64) float64 {
 }
 
 // Retention:保留期就是 rm。按天分文件让清理不需要任何压缩整理逻辑。
+// downsampleRound collapses a round's samples to [min, median, P90, max].
+// The round itself is preserved — same timestamp, same sent/recv counts, same burst
+// flag and z-score — so cold data flows through the exact same code path as hot data.
+// Only the within-round redundancy is dropped: on a month-wide axis those 20-30
+// samples land in the same pixel column anyway.
+func downsampleRound(r Round) Round {
+	if len(r.MS) <= 4 {
+		return r // already small enough
+	}
+	sorted := append([]float64(nil), r.MS...)
+	sort.Float64s(sorted)
+	n := len(sorted)
+	r.MS = []float64{
+		round2(sorted[0]),
+		round2(sorted[n/2]),
+		round2(sorted[int(float64(n)*0.9)]),
+		round2(sorted[n-1]),
+	}
+	return r
+}
+
+// Downsample rewrites one day file in place with per-round downsampling. Files are
+// rewritten atomically via a temp file so a crash cannot leave a half-written day.
+func (s *Store) Downsample(name, day string) error {
+	rounds, err := s.readDay(name, day)
+	if err != nil || len(rounds) == 0 {
+		return err
+	}
+	// already downsampled? cheap check on the first round
+	if len(rounds[0].MS) <= 4 {
+		return nil
+	}
+	path := s.dayFile(name, day)
+	tmp := path + ".tmp"
+	f, err := os.Create(tmp)
+	if err != nil {
+		return err
+	}
+	for _, r := range rounds {
+		line, err := json.Marshal(downsampleRound(r))
+		if err != nil {
+			f.Close()
+			os.Remove(tmp)
+			return err
+		}
+		if _, err := f.Write(append(line, byte(10))); err != nil {
+			f.Close()
+			os.Remove(tmp)
+			return err
+		}
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// Tier runs nightly: day files older than hotDays get downsampled in place, files
+// older than keepDays are deleted. One pass, no separate cold directory — the
+// tiering is invisible above the storage layer.
+func (s *Store) Tier(hotDays, keepDays int) {
+	hotCut := time.Now().AddDate(0, 0, -hotDays).Format("2006-01-02")
+	keepCut := time.Now().AddDate(0, 0, -keepDays).Format("2006-01-02")
+	s.mu.RLock()
+	names := make([]string, 0, len(s.dirs))
+	for n := range s.dirs {
+		names = append(names, n)
+	}
+	s.mu.RUnlock()
+
+	for _, name := range names {
+		s.mu.RLock()
+		dir := s.dirs[name]
+		s.mu.RUnlock()
+		entries, err := os.ReadDir(filepath.Join(s.dir, dir))
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			fn := e.Name()
+			if len(fn) < 10 || strings.HasSuffix(fn, ".tmp") {
+				continue
+			}
+			day := fn[:10]
+			switch {
+			case day < keepCut:
+				os.Remove(filepath.Join(s.dir, dir, fn))
+				log.Printf("retention: removed %s/%s", dir, fn)
+			case day < hotCut:
+				if err := s.Downsample(name, day); err != nil {
+					log.Printf("downsample %s/%s failed: %v", dir, day, err)
+				}
+			}
+		}
+	}
+}
+
 func (s *Store) Retention(days int) {
 	if days <= 0 {
 		return

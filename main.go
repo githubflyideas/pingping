@@ -222,7 +222,7 @@ func housekeeping(cfg *Config, store *Store, stop chan struct{}) {
 		day := now.Format("2006-01-02")
 		if now.Hour() == 0 && now.Minute() == 5 && last != day {
 			last = day
-			store.Retention(cfg.RetentionDays)
+			store.Tier(cfg.HotDays, cfg.RetentionDays)
 		}
 	}
 }

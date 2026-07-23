@@ -164,7 +164,7 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 		to, _ := strconv.ParseInt(q.Get("to"), 10, 64)
 		if from == 0 || to == 0 {
 			minutes, _ := strconv.Atoi(q.Get("minutes"))
-			if minutes <= 0 || minutes > 100800 { // up to 70 days
+			if minutes <= 0 || minutes > 432000 { // up to 300 days
 				minutes = 360
 			}
 			to = time.Now().Unix()

@@ -19,7 +19,8 @@ type Config struct {
 	TargetsDir    string
 	Targets       []TargetCfg
 	Probe         ProbeCfg
-	RetentionDays int
+	HotDays       int // full samples kept this long
+	RetentionDays int // downsampled data kept this long
 }
 
 func defaultConfig() *Config {
@@ -28,7 +29,8 @@ func defaultConfig() *Config {
 		DataDir:       "./data",
 		TargetsDir:    "./targets",
 		Probe:         ProbeCfg{IntervalSec: 60, Packets: 20, GapMs: 50, TimeoutMs: 1000},
-		RetentionDays: 70,
+		HotDays:       30,
+		RetentionDays: 300,
 	}
 }
 
