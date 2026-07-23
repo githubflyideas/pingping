@@ -186,12 +186,22 @@ async function loadTargets() {
 
 let sel = null; // {from,to} 框选时间段(unix 秒)
 let renderSeq = 0;
+let rendering = false; // 一次渲染(含慢速 band 查询)是否仍在进行
 async function render() {
   const seq = ++renderSeq;
+  rendering = true;
+  try {
+    await renderInner(seq);
+  } finally {
+    if (seq === renderSeq) rendering = false; // 只有最新一次才解锁
+  }
+}
+
+async function renderInner(seq) {
   await loadTargets();
   const t = targets.find(x => x.name === current);
   if (!t) return;
-  if (!sel && days > 0) { await renderBand(t); return; }
+  if (!sel && days > 0) { await renderBand(t, seq); return; }
   let url = `/api/series?target=${encodeURIComponent(current)}&maxpts=12000`;
   if (sel) url += `&from=${sel.from}&to=${sel.to}`;
   else url += `&minutes=${minutes}`;
@@ -349,11 +359,10 @@ document.querySelectorAll('#tfilter button').forEach(b => b.onclick = () => {
 })();
 
 render();
-setInterval(render, 60000);
+setInterval(() => { if (!rendering) render(); }, 60000); // 慢查询进行中时跳过本次自动刷新
 // Long windows: smoke is a hot-data privilege — beyond 24h you get the
 // P50 line, a P50–P99 band, loss bars and burst counts from server-side buckets.
-async function renderBand(t) {
-  const seq = renderSeq;
+async function renderBand(t, seq) {
   const rows = await (await fetch(`/api/band?target=${encodeURIComponent(current)}&days=${days}`)).json() || [];
   if (seq !== renderSeq) return; // 过期响应:已切走,丢弃
   const p50 = [], band = [], loss = [], bursts = [];
