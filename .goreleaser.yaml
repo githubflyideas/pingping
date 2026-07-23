@@ -18,7 +18,10 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X main.version={{ .Version }}
+      # Static link: CGO otherwise ties the binary to the builder glibc, so one built
+      # on Ubuntu 24 refuses to start on anything older. Static keeps "copy it over
+      # and run it" true, which is the whole point of this project.
+      - -s -w -X main.version={{ .Version }} -linkmode external -extldflags -static
     goos: [linux]
     goarch: [amd64]
 
