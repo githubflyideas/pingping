@@ -61,7 +61,11 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 				return
 			}
+			t0 := time.Now()
 			h(w, r)
+			if d := time.Since(t0); d > time.Second {
+				log.Printf("slow request: %s %s took %v", r.URL.Path, r.URL.RawQuery, d)
+			}
 		}
 	}
 	page := func(name string) http.HandlerFunc {

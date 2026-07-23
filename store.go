@@ -44,7 +44,10 @@ func NewStore(dir string, targets []TargetCfg) (*Store, error) {
 }
 
 func (s *Store) dayFile(name, day string) string {
-	return filepath.Join(s.dir, s.dirs[name], day+".jsonl")
+	s.mu.RLock()
+	dir := s.dirs[name]
+	s.mu.RUnlock()
+	return filepath.Join(s.dir, dir, day+".jsonl")
 }
 
 // Append 先落盘再进环:进程崩溃时宁可环里少一条,不可文件里丢一条。
