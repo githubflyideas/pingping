@@ -30,16 +30,6 @@
     --smoke:rgba(11,114,133,.18); --lossbar:rgba(209,67,63,.5); --glow:0;
     --smoke-hot:#064a57; --smoke-mid:#1596ad; --smoke-cool:#b3722f;
   }
-  /* Nord — the arctic palette that ships in half the terminals on earth.
-     Desaturated blue-greys with a single frost accent; nothing shouts. */
-  html[data-theme="nord"] {
-    --bg:#2e3440; --panel:#3b4252; --screen:#292e39; --line:#434c5e;
-    --phos:#88c0d0; --amber:#ebcb8b; --alert:#bf616a; --ink:#e5e9f0; --dim:#7b88a1;
-    --grid-axis:#4c566a; --grid-split:#373e4c;
-    --smoke:rgba(136,192,208,.18); --lossbar:rgba(191,97,106,.55); --glow:5;
-    --smoke-hot:#eceff4; --smoke-mid:#88c0d0; --smoke-cool:#5e81ac;
-    --shadow:0 1px 2px rgba(0,0,0,.35); --shadow-lg:0 10px 30px rgba(0,0,0,.30);
-  }
   /* Solarized Light — Ethan Schoonover's palette, tuned for long reading sessions.
      Warm paper base, muted cyan trace, red reserved strictly for loss. */
   html[data-theme="solarized"] {
@@ -94,14 +84,17 @@
   footer { margin-top:12px; color:var(--dim); font-size:12px; display:flex; gap:10px; flex-wrap:wrap; }
   #conclusion { color:var(--ink); }
   .legend { color:var(--dim); }
-  .promos { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
-  @media (max-width:720px) { .promos { grid-template-columns:1fr; } }
+  .promos { margin-top:16px; }
   .promo { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
            box-shadow:var(--shadow); text-decoration:none; display:block; }
   .promo.sponsor { border-style:dashed; }
   .promo.sponsor:hover { border-color:var(--phos); }
   .promo-h { font-family:var(--mono); font-size:10px; letter-spacing:.16em; color:var(--dim); margin-bottom:6px; }
-  .promo-b { color:var(--ink); font-size:13px; }
+  .promo-b { color:var(--ink); font-size:13px; display:flex; gap:16px;
+             align-items:center; justify-content:space-between; flex-wrap:wrap; }
+  .promo-b a { color:var(--phos); text-decoration:none; font-weight:600; white-space:nowrap; }
+  .promo-b a:hover { text-decoration:underline; }
+  .promo-h #ver { color:var(--phos); letter-spacing:0; }
   .share .promo-b { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
   .share a { color:var(--phos); text-decoration:none; font-weight:600; }
   .share a:hover { text-decoration:underline; }
@@ -164,15 +157,11 @@
 </footer>
 
 <div class="promos">
-  <a class="promo sponsor" id="sponsorSlot" href="https://github.com/githubflyideas/pingping#sponsor" target="_blank" rel="noopener">
-    <div class="promo-h">SPONSOR</div>
-    <div class="promo-b">This slot is for one VPS / IDC / network sponsor. Your GIF here — reach out on GitHub.</div>
-  </a>
-  <div class="promo share">
-    <div class="promo-h">LIKE PINGPING? <span id="ver" style="color:var(--phos)"></span></div>
+  <div class="promo sponsor" id="sponsorSlot">
+    <div class="promo-h">SPONSOR <span id="ver"></span></div>
     <div class="promo-b">
+      <span>This slot is for one VPS / IDC / network sponsor — your GIF here.</span>
       <a href="https://github.com/githubflyideas/pingping" target="_blank" rel="noopener">★ Star on GitHub</a>
-      <span class="share-links" id="shareLinks"></span>
     </div>
   </div>
 </div>
@@ -181,7 +170,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const THEMES = ['dark', 'daylight', 'arctic', 'nord', 'solarized', 'amber'];
+const THEMES = ['dark', 'daylight', 'arctic', 'solarized', 'amber'];
 let theme = localStorage.getItem('pp_theme') || 'dark';
 if (!THEMES.includes(theme)) theme = 'dark';
 function applyTheme() {
@@ -388,11 +377,10 @@ document.querySelectorAll('#tfilter button').forEach(b => b.onclick = () => {
   render();
 });
 
-// 分享的是公开项目主页,不是本地私有面板
+// 版本号显示在赞助栏标题;保留期决定哪些时间窗有意义
 fetch('/api/version').then(r => r.json()).then(d => {
-  const el = document.getElementById('ver');
-  if (el && d.version) el.textContent = 'v' + d.version.replace(/^v/, '');
-  // 超出保留期的窗口按钮没有意义,直接藏起来 —— 用 --days 决定看得到多久
+  const el = $('ver');
+  if (el && d.version) el.textContent = 'v' + String(d.version).replace(/^v/, '');
   const keep = (d.retention_days || 0) * 1440;
   if (keep > 0) {
     document.querySelectorAll('.rng button[data-m]').forEach(b => {
@@ -400,28 +388,6 @@ fetch('/api/version').then(r => r.json()).then(d => {
     });
   }
 }).catch(() => {});
-
-(function buildShare() {
-  const url = 'https://github.com/githubflyideas/pingping';
-  const text = 'pingping — a single-binary link quality oscilloscope. One binary. One graph. Zero guesswork.';
-  const links = {
-    X: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
-    Facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-    Reddit: `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent('pingping — modern SmokePing alternative')}`,
-    HN: `https://news.ycombinator.com/submitlink?u=${encodeURIComponent(url)}&t=${encodeURIComponent('pingping — single-binary link quality oscilloscope')}`
-  };
-  const box = document.getElementById('shareLinks');
-  Object.entries(links).forEach(([k, href]) => {
-    const a = document.createElement('a');
-    a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.textContent = k;
-    box.appendChild(a);
-  });
-  const ig = document.createElement('a');
-  ig.href = '#'; ig.textContent = 'Instagram (copy link)';
-  ig.onclick = e => { e.preventDefault(); navigator.clipboard && navigator.clipboard.writeText(url);
-    ig.textContent = 'link copied ✓'; setTimeout(() => ig.textContent = 'Instagram (copy link)', 1500); };
-  box.appendChild(ig);
-})();
 
 render();
 setInterval(() => { if (!rendering) render(); }, 60000); // 慢查询进行中时跳过本次自动刷新
