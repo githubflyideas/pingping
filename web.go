@@ -170,7 +170,7 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 			to = time.Now().Unix()
 			from = to - int64(minutes)*60
 		}
-		writeJSON(w, store.ReadRange(name, from, to))
+		writeJSON(w, store.ReadRange(r.Context(), name, from, to))
 	}))
 
 	return http.ListenAndServe(cfg.Listen, mux)

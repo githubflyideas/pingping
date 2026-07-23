@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -161,12 +162,15 @@ func (s *Store) RemoveTarget(name string) {
 	}
 }
 
-func (s *Store) ReadRange(name string, from, to int64) []Round {
+// ReadRange reads raw rounds in [from,to]. ctx lets a long read stop early when the
+// browser navigates away: without it, clicking through targets leaves every abandoned
+// query still chewing through day files, and they starve each other.
+func (s *Store) ReadRange(ctx context.Context, name string, from, to int64) []Round {
 	var rounds []Round
 	// ring first (covers the recent tail cheaply)
 	s.mu.RLock()
 	ring := s.rings[name]
-	ringFrom := int64(1<<62)
+	ringFrom := int64(1 << 62)
 	if len(ring) > 0 {
 		ringFrom = ring[0].T
 	}
@@ -176,6 +180,11 @@ func (s *Store) ReadRange(name string, from, to int64) []Round {
 		rounds = s.Recent(name, from)
 	} else {
 		for d := time.Unix(from, 0); !d.After(time.Unix(to, 0)); d = d.AddDate(0, 0, 1) {
+			select {
+			case <-ctx.Done(): // client went away — stop reading, drop what we have
+				return []Round{}
+			default:
+			}
 			day, _ := s.readDay(name, d.Format("2006-01-02"))
 			rounds = append(rounds, day...)
 		}

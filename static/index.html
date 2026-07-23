@@ -216,6 +216,8 @@ async function loadTargets() {
 
 let sel = null; // {from,to} 自定义查询区间(unix 秒)
 let renderSeq = 0;
+let inflight = null; // 正在飞的 series 请求 —— 新请求发起前先掐掉它,
+                     // 否则快速点击会在服务端堆起一串没人要的慢查询,互相拖死。
 let rendering = false; // 一次渲染(含慢速 band 查询)是否仍在进行
 async function render() {
   const seq = ++renderSeq;
@@ -234,7 +236,18 @@ async function renderInner(seq) {
   let url = `/api/series?target=${encodeURIComponent(current)}`;
   if (sel) url += `&from=${sel.from}&to=${sel.to}`;
   else url += `&minutes=${minutes}`;
-  const rounds = await (await fetch(url)).json() || [];
+  if (inflight) inflight.abort();
+  const ctl = new AbortController();
+  inflight = ctl;
+  let rounds;
+  try {
+    rounds = await (await fetch(url, { signal: ctl.signal })).json() || [];
+  } catch (e) {
+    if (e.name === 'AbortError') return; // 被新点击取代,静默退出
+    throw e;
+  } finally {
+    if (inflight === ctl) inflight = null;
+  }
   if (seq !== renderSeq) return; // 过期响应:已切走,丢弃
 
   const smoke = [], median = [], lossBars = [], burstPts = [];
