@@ -1,7 +1,7 @@
 🌐 [English](#english) · [中文](#中文) · [Español](#español) · [Français](#français) · [Português](#português) · [Deutsch](#deutsch) · [Русский](#русский) · [日本語](#日本語) · [한국어](#한국어) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية) · [हिन्दी](#हिन्दी) · [বাংলা](#বাংলা) · [اردو](#اردو) · [Türkçe](#türkçe) · [ไทย](#ไทย)
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero7.png)
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero10.png)
-![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero6.png)
+![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero13.png)
 
 
 A smokeping-like network tool.One binary file.   
