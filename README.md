@@ -14,8 +14,12 @@ Just scp and run.
 ```bash
 mkdir /home/pingping -p &&cd /home/pingping
 wget https://github.com/githubflyideas/pingping/releases/download/v2.10.2/pingping-v2.10.2-linux-amd64.tar.gz
+or
+wget https://github.com/githubflyideas/pingping/releases/download/v3.0.3/pingping-v3.0.3-linux-amd64.tar.gz
 
 tar -zxvf pingping-v2.10.2-linux-amd64.tar.gz
+or
+tar -zxvf pingping-v3.0.3-linux-amd64.tar.gz
 
 ./pingping user=admin passwd=admin
 ```
