@@ -12,7 +12,7 @@ Just scp and run.
 
 
 ```bash
-mkdir /home/pingping-p &&cd /home/pingping
+mkdir /home/pingping -p &&cd /home/pingping
 wget https://github.com/githubflyideas/pingping/releases/download/v2.10.2/pingping-v2.10.2-linux-amd64.tar.gz
 
 tar -zxvf pingping-v2.10.2-linux-amd64.tar.gz
