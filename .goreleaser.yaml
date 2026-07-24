@@ -1,5 +1,6 @@
-# GoReleaser — cross-platform tarballs + an auto-updated Homebrew tap. No apt/deb, no rpm.
-# Zero-dependency single binary; scp-and-run remains the primary path, brew is an extra.
+# GoReleaser — cross-platform tarballs. No apt/deb, no rpm, no brew tap (dropped:
+# not worth the token upkeep for a secondary channel — scp-and-run is the primary path).
+# Zero-dependency single binary.
 version: 2
 
 project_name: pingping
@@ -34,22 +35,6 @@ checksum:
   name_template: "SHA256SUMS"
 
 
-# Homebrew: pushed to githubflyideas/homebrew-tap → `brew install githubflyideas/tap/pingping`.
-brews:
-  - name: pingping
-    repository:
-      owner: githubflyideas
-      name: homebrew-tap
-      token: "{{ .Env.TAP_TOKEN }}"
-    directory: Formula
-    homepage: https://github.com/githubflyideas/pingping
-    description: Single-binary link quality oscilloscope (modern SmokePing alternative).
-    license: Apache-2.0
-    install: |
-      bin.install "pingping"
-    test: |
-      system "#{bin}/pingping", "-version"
-
 release:
   github:
     owner: githubflyideas
@@ -57,8 +42,4 @@ release:
   header: |
     ## Install
 
-    **Homebrew** (macOS/Linux):
-    ```bash
-    brew install githubflyideas/tap/pingping
-    ```
-    **Or just scp and run** — download a tarball below, extract, `./pingping`. Zero dependencies.
+    scp a tarball below, extract, `./pingping`. Zero dependencies.
