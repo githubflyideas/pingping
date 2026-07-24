@@ -7,6 +7,10 @@
 A smokeping-like network tool.One binary file,
 Just scp and run
 
+v2.10.2:Storage is JSON; history is kept for 300 days by default 
+v3.03: Storage is SQLite; history is kept for 40 days by default (--days=300 for longer).only 
+
+
 ```bash
 cd /home
 wget https://github.com/githubflyideas/pingping/releases/download/v2.2.4/pingping-v2.2.4-linux-amd64.tar.gz
