@@ -6,49 +6,64 @@
 <link rel="icon" href="data:,">
 <title>pingping — link quality oscilloscope</title>
 <style>
+  /* Palettes follow two rules taken from Bauhaus and from Wes Anderson's colour work:
+     separate function by HUE, not by brightness — the median line and the smoke cloud
+     are deliberately different colours so the line never dissolves into its own data;
+     and keep the ground desaturated so one saturated accent can carry the eye.
+     Loss red is reserved: it appears nowhere except failure. */
+
+  /* Signal — Bauhaus primaries on graphite. Cyan trace over a warm ochre cloud. */
   :root {
-    --bg:#0a0c0e; --panel:#101613; --screen:#060808; --line:#1e242a;
-    --phos:#7ce38b; --amber:#e8b44a; --alert:#ff5c57; --ink:#c7d0c9; --dim:#5c6b60;
-    --grid-axis:#2a332c; --grid-split:#10281a;
-    --smoke:rgba(124,227,139,.16); --lossbar:rgba(255,92,87,.55); --glow:6;
-    --smoke-hot:#d8ffe2; --smoke-mid:#7ce38b; --smoke-cool:#8a7a3a;
+    --bg:#14161a; --panel:#1c2027; --screen:#0e1014; --line:#2b323c;
+    --phos:#22d3ee; --amber:#fbbf24; --alert:#f43f5e; --ink:#e2e8f0; --dim:#7b8794;
+    --grid-axis:#333b47; --grid-split:#1e242c;
+    --smoke:rgba(251,191,36,.20); --lossbar:rgba(244,63,94,.65); --glow:5;
+    --smoke-hot:#fde68a; --smoke-mid:#f59e0b; --smoke-cool:#8a5a1f;
+    --shadow:0 1px 2px rgba(0,0,0,.45); --shadow-lg:0 12px 32px rgba(0,0,0,.45);
     --mono: ui-monospace,"SF Mono","Cascadia Mono",Consolas,"Noto Sans Mono",monospace;
   }
-  /* Daylight: warm paper — the trace printed on lab graph paper */
+
+  /* Daylight — printed on lab paper. Deep ink-blue trace, warm clay cloud. */
   html[data-theme="daylight"] {
-    --bg:#f4f1e8; --panel:#faf8f1; --screen:#fffef9; --line:#e0dbc9;
-    --phos:#177245; --amber:#986a00; --alert:#c23a32; --ink:#2b2f28; --dim:#8b8a7a;
-    --grid-axis:#cfc9b4; --grid-split:#ebe6d4;
-    --smoke:rgba(23,114,69,.20); --lossbar:rgba(194,58,50,.5); --glow:0;
-    --smoke-hot:#0e5e37; --smoke-mid:#2f9e63; --smoke-cool:#b08a2e;
+    --bg:#f2efe6; --panel:#fbf9f3; --screen:#fffdf7; --line:#ddd6c4;
+    --phos:#1d4ed8; --amber:#b45309; --alert:#be123c; --ink:#232a2e; --dim:#8a8677;
+    --grid-axis:#cdc6b2; --grid-split:#e9e3d3;
+    --smoke:rgba(180,83,9,.22); --lossbar:rgba(190,18,60,.55); --glow:0;
+    --smoke-hot:#7c2d12; --smoke-mid:#c2703a; --smoke-cool:#d8c4a8;
+    --shadow:0 1px 3px rgba(80,70,40,.12); --shadow-lg:0 12px 30px rgba(80,70,40,.16);
   }
-  /* Arctic: cool morning light — teal trace on frosted glass */
+
+  /* Arctic — cold light. Near-black trace cutting through a glacial blue cloud. */
   html[data-theme="arctic"] {
-    --bg:#edf1f5; --panel:#f6f9fb; --screen:#fbfdfe; --line:#d7e0e8;
-    --phos:#0b7285; --amber:#b45309; --alert:#d1433f; --ink:#24313d; --dim:#7f8f9d;
-    --grid-axis:#c3d0db; --grid-split:#e3ebf2;
-    --smoke:rgba(11,114,133,.18); --lossbar:rgba(209,67,63,.5); --glow:0;
-    --smoke-hot:#064a57; --smoke-mid:#1596ad; --smoke-cool:#b3722f;
+    --bg:#eaeff4; --panel:#f7fafc; --screen:#fdfeff; --line:#d3dce5;
+    --phos:#0f172a; --amber:#0369a1; --alert:#dc2626; --ink:#1e293b; --dim:#7d8b99;
+    --grid-axis:#c2cdd8; --grid-split:#e2e9f0;
+    --smoke:rgba(56,132,199,.22); --lossbar:rgba(220,38,38,.5); --glow:0;
+    --smoke-hot:#0c4a6e; --smoke-mid:#3884c7; --smoke-cool:#b6cfe4;
+    --shadow:0 1px 3px rgba(30,50,70,.10); --shadow-lg:0 12px 30px rgba(30,50,70,.14);
   }
-  /* Solarized Light — Ethan Schoonover's palette, tuned for long reading sessions.
-     Warm paper base, muted cyan trace, red reserved strictly for loss. */
-  html[data-theme="solarized"] {
-    --bg:#fdf6e3; --panel:#fffbf0; --screen:#fffdf6; --line:#e5ddc8;
-    --phos:#2aa198; --amber:#b58900; --alert:#dc322f; --ink:#586e75; --dim:#93a1a1;
-    --grid-axis:#d6cfba; --grid-split:#efe8d5;
-    --smoke:rgba(42,161,152,.22); --lossbar:rgba(220,50,47,.45); --glow:0;
-    --smoke-hot:#0f5f5a; --smoke-mid:#2aa198; --smoke-cool:#93a1a1;
-    --shadow:0 1px 3px rgba(101,123,131,.12); --shadow-lg:0 10px 28px rgba(101,123,131,.16);
+
+  /* Grand Budapest — Anderson's pink and plum. Plum trace, dusty rose cloud. */
+  html[data-theme="budapest"] {
+    --bg:#f7ebe8; --panel:#fdf5f2; --screen:#fffaf8; --line:#e6cfc8;
+    --phos:#6b2d5b; --amber:#c9754f; --alert:#c1362f; --ink:#3a2a2e; --dim:#9c8087;
+    --grid-axis:#dcc0b8; --grid-split:#f0e0da;
+    --smoke:rgba(216,133,140,.26); --lossbar:rgba(193,54,47,.5); --glow:0;
+    --smoke-hot:#a8455a; --smoke-mid:#d8858c; --smoke-cool:#eec4c0;
+    --shadow:0 1px 3px rgba(120,80,80,.12); --shadow-lg:0 12px 30px rgba(120,80,80,.16);
   }
-  /* Amber CRT — a DEC VT220 in a dim room. One hue, three intensities, that is it. */
+
+  /* Amber CRT — a VT220 in a dim room, but the cloud runs cooler than the trace so
+     the two never merge the way a single-hue phosphor screen would. */
   html[data-theme="amber"] {
-    --bg:#100c04; --panel:#1a1409; --screen:#0a0702; --line:#3a2c14;
-    --phos:#ffb000; --amber:#ffcc55; --alert:#ff5f2e; --ink:#f0c674; --dim:#8a6d3a;
-    --grid-axis:#463a1c; --grid-split:#221a0c;
-    --smoke:rgba(255,176,0,.16); --lossbar:rgba(255,95,46,.5); --glow:8;
-    --smoke-hot:#fff3d0; --smoke-mid:#ffb000; --smoke-cool:#7a5410;
-    --shadow:0 1px 2px rgba(0,0,0,.6); --shadow-lg:0 10px 30px rgba(0,0,0,.55);
+    --bg:#12100a; --panel:#1c1810; --screen:#0b0906; --line:#38301c;
+    --phos:#ffc233; --amber:#ffd98a; --alert:#ff5f2e; --ink:#f0dcae; --dim:#8f7b4e;
+    --grid-axis:#443a20; --grid-split:#201b10;
+    --smoke:rgba(122,162,116,.22); --lossbar:rgba(255,95,46,.55); --glow:7;
+    --smoke-hot:#cfe6c0; --smoke-mid:#7aa274; --smoke-cool:#4a5c3f;
+    --shadow:0 1px 2px rgba(0,0,0,.6); --shadow-lg:0 12px 32px rgba(0,0,0,.55);
   }
+
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--ink); font-family:var(--mono); padding:18px 22px; }
   header { display:flex; align-items:baseline; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
@@ -170,7 +185,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const THEMES = ['dark', 'daylight', 'arctic', 'solarized', 'amber'];
+const THEMES = ['dark', 'daylight', 'arctic', 'budapest', 'amber'];
 let theme = localStorage.getItem('pp_theme') || 'dark';
 if (!THEMES.includes(theme)) theme = 'dark';
 function applyTheme() {
