@@ -12,12 +12,11 @@ Just scp and run.
 
 
 ```bash
-cd /home
-wget https://github.com/githubflyideas/pingping/releases/download/v2.2.4/pingping-v2.2.4-linux-amd64.tar.gz
+mkdir /home/pingping-p &&cd /home/pingping
+wget https://github.com/githubflyideas/pingping/releases/download/v2.10.2/pingping-v2.10.2-linux-amd64.tar.gz
 
-tar -zxvf pingping-v2.2.4-linux-amd64.tar.gz
+tar -zxvf pingping-v2.10.2-linux-amd64.tar.gz
 
-cd pingping-v2.2.4-linux-amd64
 ./pingping user=admin passwd=admin
 ```
 Open http://localhost:8517 and watch your first puff of network smoke.
