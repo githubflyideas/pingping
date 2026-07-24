@@ -20,7 +20,9 @@ wget https://github.com/githubflyideas/pingping/releases/download/v3.0.3/pingpin
 tar -zxvf pingping-v3.0.3-linux-amd64.tar.gz
 ./pingping user=admin passwd=admin
 ```
-Open http://localhost:8517 and watch your first puff of network smoke.
+Open http://localhost:8517 and watch your first puff of network smoke.  
+*v2.10.2:Storage is JSON;   history is kept for 300 days by default  
+*v3.03  :Storage is SQLite; history is kept for 40  days by default (--days=300 for longer)  
 
 -----------------------------------------------------------
 Add target host 
@@ -28,8 +30,7 @@ Add target host
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
  echo "10.0.0.5:443 ads-api"        >> targets/tcp.list
 ```
-*v2.10.2:Storage is JSON;   history is kept for 300 days by default  
-*v3.03  :Storage is SQLite; history is kept for 40  days by default (--days=300 for longer)   
+ 
 Data cleanup
 Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh` is all you need
 (data is plain per-day JSONL, so cleanup is just find+delete):
