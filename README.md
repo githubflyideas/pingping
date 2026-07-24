@@ -4,7 +4,7 @@
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero14.png)
 
 
-A smokeping-like network tool/ One binary file/ Just scp and run.   
+A smokeping-like network tool-----One binary file-----Just scp and run
 
 ```bash
 mkdir /home/pingping -p &&cd /home/pingping
