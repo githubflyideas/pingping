@@ -7,8 +7,9 @@
 A smokeping-like network tool.One binary file.   
 Just scp and run.   
 
-*v2.10.2:Storage is JSON; history is kept for 300 days by default  
-*v3.03: Storage is SQLite; history is kept for 40 days by default (--days=300 for longer).only  
+
+*v2.10.2:Storage is JSON;   history is kept for 300 days by default  
+*v3.03  :Storage is SQLite; history is kept for 40  days by default (--days=300 for longer)
 
 
 ```bash
