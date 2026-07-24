@@ -21,9 +21,9 @@ tar -zxvf pingping-v3.0.3-linux-amd64.tar.gz
 ./pingping user=admin passwd=admin
 ```
 Open http://localhost:8517 and watch your first puff of network smoke       
+
 *v2.10.2:Storage is JSON;   history is kept for 300 days by default  
 *v3.03  :Storage is SQLite; history is kept for 40  days by default (--days=300 for longer)  
-
 -----------------------------------------------------------
 Add target host 
 ```
