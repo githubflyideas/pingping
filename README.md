@@ -9,19 +9,19 @@ A smokeping-like network tool-----One binary file-----Just scp and run
 ```bash
 mkdir /home/pingping -p &&cd /home/pingping
 
-wget https://github.com/githubflyideas/pingping/releases/download/v2.10.2/pingping-v2.10.2-linux-amd64.tar.gz
-tar -zxvf pingping-v2.10.2-linux-amd64.tar.gz
+wget https://github.com/githubflyideas/pingping/releases/download/v2.11.2/pingping-v2.11.2-linux-amd64.tar.gz
+tar -zxvf pingping-v2.11.2-linux-amd64.tar.gz
 ./pingping user=admin passwd=admin
 
 or
 
-wget https://github.com/githubflyideas/pingping/releases/download/v3.0.3/pingping-v3.0.3-linux-amd64.tar.gz
-tar -zxvf pingping-v3.0.3-linux-amd64.tar.gz
+wget https://github.com/githubflyideas/pingping/releases/download/v3.2.0/pingping-v3.2.0-linux-amd64.tar.gz
+tar -zxvf pingping-v3.2.0-linux-amd64.tar.gz
 ./pingping user=admin passwd=admin
 ```
 Open http://localhost:8517 and watch your first puff of network smoke　　
 
-*v2.x:Storage is JSON;   history is kept for 300 days by default   
+*v2.x:Storage is JSON ;   history is kept for 300 days by default   
 *v3.x:Storage is SQLite; history is kept for 40  days by default (--days=300 for longer)
 
 -----------------------------------------------------------
