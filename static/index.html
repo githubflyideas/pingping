@@ -82,7 +82,7 @@
          -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
   header { display:flex; align-items:baseline; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
   .mark { color:var(--phos); font-family:var(--mono); font-weight:700;
-          font-size:var(--fs-title); letter-spacing:.04em; }
+          font-size:26px; letter-spacing:.03em; display:flex; align-items:center; gap:9px; }
   .tag { color:var(--dim); font-size:var(--fs-small); font-weight:400; letter-spacing:.01em; }
   .row { display:flex; gap:12px; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap; }
   .pills { display:flex; gap:8px; flex-wrap:wrap; }
@@ -93,6 +93,17 @@
   .pill.on { border-color:var(--phos); color:var(--phos); font-weight:600; }
   .led { width:8px; height:8px; border-radius:50%; background:var(--phos); box-shadow:0 0 6px var(--phos); }
   .led.bad { background:var(--alert); box-shadow:0 0 6px var(--alert); }
+  /* Brand dot: alternates the two colours already used for host status (green =
+     healthy, red = down), so the same signal that reads "up/down" on a target row
+     reads "alive" at the letterhead — a small mnemonic, not a new colour language. */
+  .brand-led { width:11px; height:11px; border-radius:50%; flex:none;
+               animation: brand-blink 2.4s ease-in-out infinite; }
+  @keyframes brand-blink {
+    0%, 45%   { background:var(--phos); box-shadow:0 0 8px var(--phos); }
+    50%, 95%  { background:var(--alert); box-shadow:0 0 8px var(--alert); }
+    100%      { background:var(--phos); box-shadow:0 0 8px var(--phos); }
+  }
+  @media (prefers-reduced-motion: reduce) { .brand-led { animation:none; background:var(--phos); } }
   .rng { display:flex; background:var(--panel); border:1px solid var(--line); border-radius:4px; overflow:hidden; }
   .rng span { color:var(--dim); font-family:var(--sans); font-size:var(--fs-micro);
               font-weight:600; padding:9px 10px 0 12px; letter-spacing:.14em; }
@@ -143,8 +154,8 @@
 </head>
 <body>
 <header>
-  <div class="mark">pingping ●</div>
-  <div class="tag">One binary. One graph. Zero guesswork.</div>
+  <div class="mark">pingping <span class="brand-led"></span></div>
+  <div class="tag">One binary. One graph. One metric: Latency.</div>
   <button class="pill" id="themeBtn" title="switch theme" style="margin-left:auto">◐ <span id="themeName">dark</span></button>
 </header>
 
@@ -200,7 +211,10 @@
     <div class="promo-h">SPONSOR <span id="ver"></span></div>
     <div class="promo-b">
       <span>This slot is for one VPS / IDC / network sponsor — your GIF here.</span>
-      <a href="https://github.com/githubflyideas/pingping" target="_blank" rel="noopener">★ Star on GitHub</a>
+      <span style="display:flex; gap:16px; align-items:center;">
+        <a href="https://github.com/githubflyideas/fogping" target="_blank" rel="noopener">Powered by Fogping</a>
+        <a href="https://github.com/githubflyideas/pingping" target="_blank" rel="noopener">★ Star on GitHub</a>
+      </span>
     </div>
   </div>
 </div>
