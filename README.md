@@ -1,11 +1,3 @@
-🌐 [English](#english) · [中文](#中文) · [Español](#español) · [Français](#français) · [Português](#português) · [Deutsch](#deutsch) · [Русский](#русский) · [日本語](#日本語) · [한국어](#한국어) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية) · [हिन्दी](#हिन्दी) · [বাংলা](#বাংলা) · [اردو](#اردو) · [Türkçe](#türkçe) · [ไทย](#ไทย)
-![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero15.png)
-![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero17.png)
-![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero16.png)
-
-
-A smokeping-like network tool-----One binary file-----Just scp and run
-
 ```bash
 mkdir /home/pingping -p &&cd /home/pingping
 
@@ -39,6 +31,16 @@ Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh`
 ./clean.sh 30    # delete probe data older than 30 days                          
 ```
 Latest [Releases](https://github.com/githubflyideas/pingping/releases)   
+
+🌐 [English](#english) · [中文](#中文) · [Español](#español) · [Français](#français) · [Português](#português) · [Deutsch](#deutsch) · [Русский](#русский) · [日本語](#日本語) · [한국어](#한국어) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية) · [हिन्दी](#हिन्दी) · [বাংলা](#বাংলা) · [اردو](#اردو) · [Türkçe](#türkçe) · [ไทย](#ไทย)
+![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero15.png)
+![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero17.png)
+![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero16.png)
+
+
+A smokeping-like network tool-----One binary file-----Just scp and run
+
+
 
 ## English
 
