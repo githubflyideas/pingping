@@ -1,3 +1,6 @@
+A smokeping-like network tool-----One binary file-----Just scp and run
+
+
 ```bash
 mkdir /home/pingping -p &&cd /home/pingping
 
@@ -36,10 +39,6 @@ Latest [Releases](https://github.com/githubflyideas/pingping/releases)
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero15.png)
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero17.png)
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero16.png)
-
-
-A smokeping-like network tool-----One binary file-----Just scp and run
-
 
 
 ## English
