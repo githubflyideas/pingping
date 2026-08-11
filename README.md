@@ -8,7 +8,7 @@ wget https://github.com/githubflyideas/pingping/releases/download/v2.11.2/pingpi
 tar -zxvf pingping-v2.11.2-linux-amd64.tar.gz
 ./pingping user=admin passwd=admin
 
-or
+or v3.2.0
 
 wget https://github.com/githubflyideas/pingping/releases/download/v3.2.0/pingping-v3.2.0-linux-amd64.tar.gz
 tar -zxvf pingping-v3.2.0-linux-amd64.tar.gz
