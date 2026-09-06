@@ -6,73 +6,63 @@
 <link rel="icon" href="data:,">
 <title>pingping — link quality oscilloscope</title>
 <style>
-  /* Palettes are built around one mechanic: the chart colours each sample by how far
-     it sits from that round's median, walking --smoke-hot -> mid -> cool as deviation
-     grows, with opacity falling from .5 to .1 along the way. So the three smoke stops
-     are not one colour dimmed three times — they are a temperature ramp. The samples
-     hugging the median burn bright and warm, the outliers cool and fade, and the
-     median line rides on top in a hue borrowed from neither end of that ramp.
-     Bauhaus supplies the discipline (hue carries meaning, not decoration), Anderson
-     the ground (desaturated field, one saturated accent). Loss red is reserved and
-     appears nowhere except failure. */
-
-  /* Signal — cyan trace over a cloud that burns from white-gold to cold ember. */
+    /* Terminal — a trading-desk screen at 2am. Amber trace (the classic financial-
+     terminal color) over a slate-blue cloud that sinks to navy at the edges. */
   :root {
-    --bg:#14161a; --panel:#1c2027; --screen:#0d0f13; --line:#2b323c;
-    --phos:#22d3ee; --amber:#fbbf24; --alert:#fb3b53; --ink:#c0c6ce; --dim:#78848f;
-    --grid-axis:#333b47; --grid-split:#1c222a;
-    --smoke:rgba(251,191,36,.20); --lossbar:rgba(251,59,83,.7); --glow:5;
-    --smoke-hot:#b86e14; --smoke-mid:#8c3f0d; --smoke-cool:#452740;
+    --bg:#0e1013; --panel:#171a1f; --screen:#0a0c0e; --line:#2a2f37;
+    --phos:#f0a838; --amber:#e8c468; --alert:#ef4a5a; --ink:#c4cad2; --dim:#747f8a;
+    --grid-axis:#323944; --grid-split:#181c22;
+    --smoke:rgba(90,140,200,.20); --lossbar:rgba(239,74,90,.65); --glow:5;
+    --smoke-hot:#3a5a86; --smoke-mid:#2a4166; --smoke-cool:#182838;
     --shadow:0 1px 2px rgba(0,0,0,.45); --shadow-lg:0 12px 32px rgba(0,0,0,.45);
     --mono: ui-monospace,"SF Mono","Cascadia Mono",Consolas,"Noto Sans Mono",monospace;
-    /* Interface text gets the system UI face; numbers and axis labels stay monospace
-       so digits line up and keep the instrument feel. Mixing the two is what separates
-       a product from terminal output. */
     --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    /* A real scale instead of everything crowded between 10 and 13px. */
     --fs-micro:10px; --fs-small:11px; --fs-body:13px; --fs-lead:15px;
     --fs-title:19px; --fs-metric:30px;
   }
 
-  /* Daylight — ink on lab paper. Core burns terracotta, edges cool to slate. */
-  html[data-theme="daylight"] {
-    --bg:#f2efe6; --panel:#fbf9f3; --screen:#fffdf7; --line:#ddd6c4;
-    --phos:#1d4ed8; --amber:#b45309; --alert:#be123c; --ink:#3e4346; --dim:#8a8677;
-    --grid-axis:#cdc6b2; --grid-split:#e9e3d3;
-    --smoke:rgba(180,83,9,.22); --lossbar:rgba(190,18,60,.6); --glow:0;
-    --smoke-hot:#e07a3a; --smoke-mid:#e8a878; --smoke-cool:#cfc8b8;
+
+  /* Newsprint — a broadsheet market page. Near-black ink trace, cloud runs from
+     saturated brick to the warm grey of old halftone printing. */
+  html[data-theme="newsprint"] {
+    --bg:#efe9dc; --panel:#f8f4ea; --screen:#fdfbf5; --line:#d8cfb8;
+    --phos:#1a1a18; --amber:#9c3b2e; --alert:#b8241f; --ink:#3d3a33; --dim:#8c8672;
+    --grid-axis:#c9bfa4; --grid-split:#e5ddc9;
+    --smoke:rgba(156,59,46,.22); --lossbar:rgba(184,36,31,.55); --glow:0;
+    --smoke-hot:#c85a3e; --smoke-mid:#d69878; --smoke-cool:#ddd0bc;
     --shadow:0 1px 3px rgba(80,70,40,.12); --shadow-lg:0 12px 30px rgba(80,70,40,.16);
   }
 
-  /* Arctic — near-black trace. Cloud runs from deep sea to pale frost. */
-  html[data-theme="arctic"] {
-    --bg:#eaeff4; --panel:#f7fafc; --screen:#fdfeff; --line:#d3dce5;
-    --phos:#0f172a; --amber:#0369a1; --alert:#dc2626; --ink:#3a4353; --dim:#7d8b99;
-    --grid-axis:#c2cdd8; --grid-split:#e2e9f0;
-    --smoke:rgba(56,132,199,.22); --lossbar:rgba(220,38,38,.55); --glow:0;
-    --smoke-hot:#4a9fd4; --smoke-mid:#8dc0e0; --smoke-cool:#cfe0ec;
-    --shadow:0 1px 3px rgba(30,50,70,.10); --shadow-lg:0 12px 30px rgba(30,50,70,.14);
+  /* Ukiyo — Hokusai's indigo woodblock prints. Deep aizuri trace on washi paper,
+     the cloud runs from Prussian blue to a pale moss highlight. */
+  html[data-theme="ukiyo"] {
+    --bg:#eef0e6; --panel:#f7f8f0; --screen:#fdfdf7; --line:#d4d8c4;
+    --phos:#1b3a6b; --amber:#c17817; --alert:#c1362f; --ink:#324158; --dim:#8593a0;
+    --grid-axis:#c3cab0; --grid-split:#e2e4d4;
+    --smoke:rgba(27,58,107,.22); --lossbar:rgba(193,54,47,.5); --glow:0;
+    --smoke-hot:#4a76ae; --smoke-mid:#88a8cc; --smoke-cool:#d4dcc4;
+    --shadow:0 1px 3px rgba(40,60,40,.10); --shadow-lg:0 12px 30px rgba(40,60,40,.14);
   }
 
-  /* Budapest — Anderson's plum and rose. Core is deep raspberry, edges go powder. */
-  html[data-theme="budapest"] {
-    --bg:#f7ebe8; --panel:#fdf5f2; --screen:#fffaf8; --line:#e6cfc8;
-    --phos:#5b2a4f; --amber:#c9754f; --alert:#c1362f; --ink:#4c3d41; --dim:#9c8087;
-    --grid-axis:#dcc0b8; --grid-split:#f0e0da;
-    --smoke:rgba(216,133,140,.26); --lossbar:rgba(193,54,47,.55); --glow:0;
-    --smoke-hot:#e0748c; --smoke-mid:#eaa8ae; --smoke-cool:#f0dbd2;
-    --shadow:0 1px 3px rgba(120,80,80,.12); --shadow-lg:0 12px 30px rgba(120,80,80,.16);
+  /* Memphis — Ettore Sottsass's 1980s Milan collective. Coral trace with real
+     confidence against soft lavender-grey, teal cloud instead of the expected pink. */
+  html[data-theme="memphis"] {
+    --bg:#e8e4ec; --panel:#f5f2f8; --screen:#fbf9fc; --line:#d2c8dc;
+    --phos:#e3462f; --amber:#0e9488; --alert:#c1362f; --ink:#463b4f; --dim:#8f849a;
+    --grid-axis:#c9bcd4; --grid-split:#e9e2ee;
+    --smoke:rgba(14,148,136,.24); --lossbar:rgba(193,54,47,.5); --glow:0;
+    --smoke-hot:#054841; --smoke-mid:#1fa89a; --smoke-cool:#c4e2da;
+    --shadow:0 1px 3px rgba(60,50,70,.12); --shadow-lg:0 12px 30px rgba(60,50,70,.16);
   }
 
-  /* Amber CRT — a VT220 left on overnight. The cloud is pure phosphor decay:
-     white-hot core, amber body, dying green at the fringe, exactly how a long
-     persistence tube fades. The trace stays a cooler gold so it sits above it. */
-  html[data-theme="amber"] {
-    --bg:#12100a; --panel:#1c1810; --screen:#0a0806; --line:#38301c;
-    --phos:#ffd75e; --amber:#ffd98a; --alert:#ff5f2e; --ink:#cebd95; --dim:#8f7b4e;
-    --grid-axis:#443a20; --grid-split:#1e1a10;
-    --smoke:rgba(255,176,0,.20); --lossbar:rgba(255,95,46,.65); --glow:7;
-    --smoke-hot:#a86a10; --smoke-mid:#7d4508; --smoke-cool:#2f4429;
+  /* Phosphor — classic P1 green CRT, the mirror image of an amber tube: green
+     trace, the cloud a warm amber-to-rust decay instead of the usual green fade. */
+  html[data-theme="phosphor"] {
+    --bg:#0a0f0a; --panel:#131a12; --screen:#070b06; --line:#233024;
+    --phos:#5eeb8a; --amber:#8ff0ab; --alert:#ff5f4a; --ink:#b8ceb8; --dim:#6f8570;
+    --grid-axis:#2c3c2c; --grid-split:#141c14;
+    --smoke:rgba(230,150,50,.20); --lossbar:rgba(255,95,74,.6); --glow:6;
+    --smoke-hot:#c47a20; --smoke-mid:#8a5010; --smoke-cool:#3a2c10;
     --shadow:0 1px 2px rgba(0,0,0,.6); --shadow-lg:0 12px 32px rgba(0,0,0,.55);
   }
 
@@ -133,18 +123,15 @@
   #conclusion { color:var(--ink); font-family:var(--mono); font-weight:600;
                 font-size:var(--fs-body); }
   .legend { color:var(--dim); font-family:var(--sans); font-size:var(--fs-small); }
-  .promos { margin-top:16px; }
+  .promos { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  @media (max-width:720px) { .promos { grid-template-columns:1fr; } }
   .promo { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
            box-shadow:var(--shadow); text-decoration:none; display:block; }
   .promo.sponsor { border-style:dashed; }
   .promo.sponsor:hover { border-color:var(--phos); }
   .promo-h { font-family:var(--sans); font-size:var(--fs-micro); font-weight:700;
              letter-spacing:.16em; color:var(--dim); margin-bottom:7px; text-transform:uppercase; }
-  .promo-b { color:var(--ink); font-size:var(--fs-body); display:flex; gap:16px;
-             align-items:center; justify-content:space-between; flex-wrap:wrap; }
-  .promo-b a { color:var(--phos); text-decoration:none; font-weight:600; white-space:nowrap; }
-  .promo-b a:hover { text-decoration:underline; }
-  .promo-h #ver { color:var(--phos); font-family:var(--mono); letter-spacing:0; font-weight:600; }
+  .promo-b { color:var(--ink); font-size:var(--fs-body); }
   .share .promo-b { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
   .share a { color:var(--phos); text-decoration:none; font-weight:600; }
   .share a:hover { text-decoration:underline; }
@@ -180,16 +167,12 @@
     <div class="rng">
       <button id="selReset" style="display:none;color:var(--amber)">✕ selection</button><span>TIME/DIV</span>
       <button data-m="60">1h</button>
-      <button data-m="240" class="on">4h</button>
-      <button data-m="480">8h</button>
-      <button data-m="1440">1d</button>
-      <button data-m="4320">3d</button>
-      <button data-m="7200">5d</button>
+      <button data-m="360" class="on">6h</button>
+      <button data-m="720">12h</button>
+      <button data-m="1440">24h</button>
       <button data-m="10080">7d</button>
-      <button data-m="20160">14d</button>
       <button data-m="43200">30d</button>
-      <button data-m="86400">60d</button>
-      <button data-m="172800">120d</button>
+      <button data-m="100800">70d</button>
       <button data-m="432000">300d</button>
     </div>
     <div class="rng custom">
@@ -207,14 +190,16 @@
 </footer>
 
 <div class="promos">
-  <div class="promo sponsor" id="sponsorSlot">
-    <div class="promo-h">SPONSOR <span id="ver"></span></div>
+  <a class="promo sponsor" id="sponsorSlot" href="https://github.com/githubflyideas/pingping#sponsor" target="_blank" rel="noopener">
+    <div class="promo-h">SPONSOR</div>
+    <div class="promo-b">This slot is for one VPS / IDC / network sponsor. Your GIF here — reach out on GitHub.</div>
+  </a>
+  <div class="promo share">
+    <div class="promo-h">LIKE PINGPING? <span id="ver" style="color:var(--phos)"></span></div>
     <div class="promo-b">
-      <span>This slot is for one VPS / IDC / network sponsor — your GIF here.</span>
-      <span style="display:flex; gap:16px; align-items:center;">
-        <a href="https://github.com/githubflyideas/fogping" target="_blank" rel="noopener">Powered by Fogping</a>
-        <a href="https://github.com/githubflyideas/pingping" target="_blank" rel="noopener">★ Star on GitHub</a>
-      </span>
+      <a href="https://github.com/githubflyideas/pingping" target="_blank" rel="noopener">★ Star on GitHub</a>
+      <a href="https://github.com/githubflyideas/fogping" target="_blank" rel="noopener">Powered by Fogping</a>
+      <span class="share-links" id="shareLinks"></span>
     </div>
   </div>
 </div>
@@ -223,7 +208,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const THEMES = ['dark', 'daylight', 'arctic', 'budapest', 'amber'];
+const THEMES = ['dark', 'newsprint', 'ukiyo', 'memphis', 'phosphor'];
 let theme = localStorage.getItem('pp_theme') || 'dark';
 if (!THEMES.includes(theme)) theme = 'dark';
 function applyTheme() {
@@ -232,7 +217,7 @@ function applyTheme() {
   const el = $('themeName'); if (el) el.textContent = theme;
 }
 applyTheme();
-let targets = [], current = null, minutes = 240, typeFilter = 'all';
+let targets = [], current = null, minutes = 360, typeFilter = 'all';
 
 // Deep link: /#t=NAME&m=1440 — send "this link, this window" to a colleague
 const hp = new URLSearchParams(location.hash.slice(1));
@@ -337,7 +322,9 @@ async function renderInner(seq) {
   $('bursts').textContent = bursts;
   $('bursts').className = 'v' + (bursts ? ' bad' : '');
 
-  const win = sel ? 'custom' : (document.querySelector('.rng button[data-m].on')?.textContent || minutes + 'm');
+  const win = sel ? 'custom'
+    : minutes === 60 ? '1h' : minutes === 360 ? '6h' : minutes === 720 ? '12h'
+    : minutes === 1440 ? '24h' : minutes === 10080 ? '7d' : minutes === 43200 ? '30d' : minutes + 'm';
   $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${win} P99 ${pool.length ? q(.99).toFixed(1) : '–'} ms · loss ${lossPct.toFixed(2)}% · ${bursts} bursts`;
 
   const phos = cssv('--phos');
@@ -430,17 +417,33 @@ document.querySelectorAll('#tfilter button').forEach(b => b.onclick = () => {
   render();
 });
 
-// 版本号显示在赞助栏标题;保留期决定哪些时间窗有意义
+// 分享的是公开项目主页,不是本地私有面板
 fetch('/api/version').then(r => r.json()).then(d => {
-  const el = $('ver');
-  if (el && d.version) el.textContent = 'v' + String(d.version).replace(/^v/, '');
-  const keep = (d.retention_days || 0) * 1440;
-  if (keep > 0) {
-    document.querySelectorAll('.rng button[data-m]').forEach(b => {
-      if (+b.dataset.m > keep) b.style.display = 'none';
-    });
-  }
+  const el = document.getElementById('ver');
+  if (el && d.version) el.textContent = 'v' + d.version.replace(/^v/, '');
 }).catch(() => {});
+
+(function buildShare() {
+  const url = 'https://github.com/githubflyideas/pingping';
+  const text = 'pingping — a single-binary link quality oscilloscope. One binary. One graph. One metric: Latency.';
+  const links = {
+    X: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+    Facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+    Reddit: `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent('pingping — modern SmokePing alternative')}`,
+    HN: `https://news.ycombinator.com/submitlink?u=${encodeURIComponent(url)}&t=${encodeURIComponent('pingping — single-binary link quality oscilloscope')}`
+  };
+  const box = document.getElementById('shareLinks');
+  Object.entries(links).forEach(([k, href]) => {
+    const a = document.createElement('a');
+    a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.textContent = k;
+    box.appendChild(a);
+  });
+  const ig = document.createElement('a');
+  ig.href = '#'; ig.textContent = 'Instagram (copy link)';
+  ig.onclick = e => { e.preventDefault(); navigator.clipboard && navigator.clipboard.writeText(url);
+    ig.textContent = 'link copied ✓'; setTimeout(() => ig.textContent = 'Instagram (copy link)', 1500); };
+  box.appendChild(ig);
+})();
 
 render();
 setInterval(() => { if (!rendering) render(); }, 60000); // 慢查询进行中时跳过本次自动刷新

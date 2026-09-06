@@ -1,6 +1,6 @@
-# GoReleaser — linux/amd64 only. SQLite (mattn/go-sqlite3) needs CGO, which rules out
-# cross-compiling to darwin and arm64 from the release runner. scp-and-run stays the
-# primary path; the Homebrew tap is gone with the macOS builds.
+# GoReleaser — cross-platform tarballs. No apt/deb, no rpm, no brew tap (dropped:
+# not worth the token upkeep for a secondary channel — scp-and-run is the primary path).
+# Zero-dependency single binary.
 version: 2
 
 project_name: pingping
@@ -14,25 +14,22 @@ builds:
     main: .
     binary: pingping
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     flags:
       - -trimpath
     ldflags:
-      # Static link: CGO otherwise ties the binary to the builder glibc, so one built
-      # on Ubuntu 24 refuses to start on anything older. Static keeps "copy it over
-      # and run it" true, which is the whole point of this project.
-      - -s -w -X main.version={{ .Version }} -linkmode external -extldflags -static
-    goos: [linux]
-    goarch: [amd64]
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
 
-# Tarballs for the "scp and run" crowd. No clean.sh: storage is SQLite now and
-# retention is handled in-process by --days.
+# Tarballs for the "scp and run" crowd — unchanged experience, plus LICENSE and clean.sh.
 archives:
   - id: tar
     formats: [tar.gz]
     name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     files:
       - LICENSE
+      - clean.sh
 
 checksum:
   name_template: "SHA256SUMS"
@@ -45,9 +42,4 @@ release:
   header: |
     ## Install
 
-    ```bash
-    tar xzf pingping-*-linux-amd64.tar.gz && ./pingping
-    ```
-    Storage is SQLite; history is kept for 40 days by default (`--days=300` for longer).
-    linux/amd64 only in this release — SQLite needs CGO, so the other platforms are
-    not cross-compiled here.
+    scp a tarball below, extract, `./pingping`. Zero dependencies.

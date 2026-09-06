@@ -22,7 +22,6 @@ www.google.com Demo pace=fast
 
 func main() {
 	localOnly := flag.Bool("localhost", false, "bind 127.0.0.1 only; put Caddy/Nginx in front for auth/TLS")
-	days := flag.Int("days", 40, "days of history to keep; UI hides windows beyond this")
 	showVer := flag.Bool("version", false, "print version")
 	flag.Parse()
 	if *showVer {
@@ -34,9 +33,6 @@ func main() {
 	// lists and, optionally, pass web credentials on the command line:
 	//   ./pingping user=u1,u2 passwd=p1,p2
 	cfg := defaultConfig()
-	if *days > 0 {
-		cfg.RetentionDays = *days
-	}
 	users, err := parseAuthArgs(flag.Args())
 	if err != nil {
 		log.Fatalf("bad auth args: %v", err)
@@ -72,7 +68,6 @@ func main() {
 		go probeLoop(t, cfg.Probe, store, detector, ch)
 	}
 	stop := make(chan struct{})
-	go store.flushLoop(stop)
 	go reloadLoop(cfg, store, detector, mgr, stop)
 	go housekeeping(cfg, store, stop)
 
@@ -227,8 +222,7 @@ func housekeeping(cfg *Config, store *Store, stop chan struct{}) {
 		day := now.Format("2006-01-02")
 		if now.Hour() == 0 && now.Minute() == 5 && last != day {
 			last = day
-			store.Rollup(time.Now().AddDate(0, 0, -2).Unix()) // 重算最近两天的聚合
-			store.Retention(cfg.HotDays, cfg.RetentionDays)
+			store.Tier(cfg.HotDays, cfg.RetentionDays)
 		}
 	}
 }

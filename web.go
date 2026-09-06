@@ -116,7 +116,7 @@ func serveWeb(cfg *Config, store *Store, users map[string]string) error {
 	})
 
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"version": version, "retention_days": cfg.RetentionDays})
+		writeJSON(w, map[string]string{"version": version})
 	})
 
 	mux.HandleFunc("/api/targets", guard(func(w http.ResponseWriter, r *http.Request) {

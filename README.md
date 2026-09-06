@@ -1,25 +1,22 @@
-A smokeping-like network tool
------One binary file-----
+🌐 [English](#english) · [中文](#中文) · [Español](#español) · [Français](#français) · [Português](#português) · [Deutsch](#deutsch) · [Русский](#русский) · [日本語](#日本語) · [한국어](#한국어) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية) · [हिन्दी](#हिन्दी) · [বাংলা](#বাংলা) · [اردو](#اردو) · [Türkçe](#türkçe) · [ไทย](#ไทย)
+
+![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero8.png)
+![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero9.png)
+
+
+A smokeping-like network tool.One binary file,
 Just scp and run
 
-
 ```bash
-mkdir /home/pingping -p &&cd /home/pingping
-
+cd /home
 wget https://github.com/githubflyideas/pingping/releases/download/v2.11.2/pingping-v2.11.2-linux-amd64.tar.gz
+
 tar -zxvf pingping-v2.11.2-linux-amd64.tar.gz
-./pingping user=admin passwd=admin
 
-or v3.2.0
-
-wget https://github.com/githubflyideas/pingping/releases/download/v3.2.0/pingping-v3.2.0-linux-amd64.tar.gz
-tar -zxvf pingping-v3.2.0-linux-amd64.tar.gz
+cd pingping-v2.11.2-linux-amd64
 ./pingping user=admin passwd=admin
 ```
-Open http://localhost:8517 and watch your first puff of network smoke　　
-
-*v2.x:Storage is JSON  ;    history is kept for 300 days by default   
-*v3.x:Storage is SQLite; history is kept for 40  days by default (--days=300 for longer)
+Open http://localhost:8517 and watch your first puff of network smoke.
 
 -----------------------------------------------------------
 Add target host 
@@ -27,7 +24,6 @@ Add target host
  echo "1.2.3.4 myhost pace=fast"    >> targets/ping.list
  echo "10.0.0.5:443 ads-api"        >> targets/tcp.list
 ```
- 
 Data cleanup
 Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh` is all you need
 (data is plain per-day JSONL, so cleanup is just find+delete):
@@ -36,12 +32,6 @@ Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh`
 ./clean.sh 30    # delete probe data older than 30 days                          
 ```
 Latest [Releases](https://github.com/githubflyideas/pingping/releases)   
-
-🌐 [English](#english) · [中文](#中文) · [Español](#español) · [Français](#français) · [Português](#português) · [Deutsch](#deutsch) · [Русский](#русский) · [日本語](#日本語) · [한국어](#한국어) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية) · [हिन्दी](#हिन्दी) · [বাংলা](#বাংলা) · [اردو](#اردو) · [Türkçe](#türkçe) · [ไทย](#ไทย)
-![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero15.png)
-![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero17.png)
-![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero16.png)
-
 
 ## English
 
@@ -361,7 +351,7 @@ Friendly Links smokeping--- https://github.com/oetiker/SmokePing
 
 pingping  is a minimalist smokeping-like network oscilloscope: probes go in, JSONL text files sit on disk (300-day retention). It features a built-in, read-only Web UI with native auth—no external databases, Nginx, or Caddy required. Just scp and run.
 
-If you need alerting, multi-platform notifications, hot reload, or tiered storage, that lives in the sibling project fogping.
+pingping stays on plain JSONL and stays cgo-free. If you want SQLite storage with indexed queries and in-process rollup/retention, that is the sibling project [fogping](https://github.com/githubflyideas/fogping).
 
 ## License
 

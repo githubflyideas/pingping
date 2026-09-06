@@ -1,8 +1,7 @@
 package main
 
 import (
-	"context"
-	"math"
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -102,112 +101,60 @@ func FuzzRobustZ(f *testing.F) {
 	})
 }
 
-// SQLite storage: round trip, tier selection, rollup correctness.
-func TestSQLiteRoundTrip(t *testing.T) {
-	dir := t.TempDir()
-	tg := TargetCfg{Name: "T1", Type: "icmp", Host: "1.1.1.1"}
-	s, err := NewStore(dir, []TargetCfg{tg})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-
-	now := time.Now().Unix()
-	in := Round{T: now, S: 20, R: 19, MS: []float64{40.1, 41.2, 39.8}, B: true, Z: 3.42}
-	if err := s.Append("T1", in); err != nil {
-		t.Fatal(err)
-	}
-	s.Flush()
-
-	got := s.ReadRange(context.Background(), "T1", now-60, now+60)
-	if len(got) != 1 {
-		t.Fatalf("want 1 round, got %d", len(got))
-	}
-	r := got[0]
-	if r.T != in.T || r.S != in.S || r.R != in.R || !r.B {
-		t.Fatalf("metadata lost: %+v", r)
-	}
-	if len(r.MS) != 3 || math.Abs(r.MS[0]-40.1) > 0.01 {
-		t.Fatalf("samples wrong: %v", r.MS)
-	}
-	if math.Abs(r.Z-3.42) > 0.01 {
-		t.Fatalf("z lost: %v", r.Z)
-	}
-}
-
-func TestTierSelection(t *testing.T) {
-	dir := t.TempDir()
-	s, err := NewStore(dir, []TargetCfg{{Name: "T2", Type: "icmp", Host: "1.1.1.1"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-
-	// 40 days of rounds, one per hour
-	now := time.Now().Unix()
-	for i := 0; i < 40*24; i++ {
-		s.Append("T2", Round{T: now - int64(i)*3600, S: 20, R: 20,
-			MS: []float64{40, 41, 42, 43}})
-	}
-	s.Flush()
-	if err := s.Rollup(now - 41*86400); err != nil {
-		t.Fatal(err)
-	}
-
-	// 6h window -> raw tier, exact rounds
-	short := s.ReadRange(context.Background(), "T2", now-6*3600, now)
-	// 10d window -> hourly tier
-	mid := s.ReadRange(context.Background(), "T2", now-10*86400, now)
-	// 40d window -> daily tier, must be far fewer rows than hourly
-	long := s.ReadRange(context.Background(), "T2", now-40*86400, now)
-
-	if len(short) == 0 || len(mid) == 0 || len(long) == 0 {
-		t.Fatalf("empty tier: short=%d mid=%d long=%d", len(short), len(mid), len(long))
-	}
-	if len(long) > 60 {
-		t.Fatalf("daily tier should collapse 40d into ~40 rows, got %d", len(long))
-	}
-	if len(mid) < len(long) {
-		t.Fatalf("hourly tier should be denser than daily: %d vs %d", len(mid), len(long))
-	}
-	t.Logf("rows returned — 6h:%d  10d:%d  40d:%d", len(short), len(mid), len(long))
-}
-
-// Deleting rows must actually hand disk back, not just mark pages reusable.
-func TestReclaimShrinksFile(t *testing.T) {
-	dir := t.TempDir()
-	s, err := NewStore(dir, []TargetCfg{{Name: "R", Type: "icmp", Host: "1.1.1.1"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-
-	// write a chunk of history, then flush
-	now := time.Now().Unix()
+func TestDownsampleRound(t *testing.T) {
 	ms := make([]float64, 20)
 	for i := range ms {
-		ms[i] = 40 + float64(i)
+		ms[i] = float64(i + 1) // 1..20
 	}
-	for i := 0; i < 60000; i++ {
-		s.Append("R", Round{T: now - int64(i)*60, S: 20, R: 20, MS: ms})
-	}
-	s.Flush()
+	in := Round{T: 1234567890, S: 20, R: 18, MS: ms, B: true, Z: 3.42}
+	out := downsampleRound(in)
 
-	dbPath := dir + "/pingping.db"
-	before, err := os.Stat(dbPath)
-	if err != nil {
-		t.Fatal(err)
+	if len(out.MS) != 4 {
+		t.Fatalf("want 4 samples, got %d", len(out.MS))
 	}
-
-	// drop nearly all of it
-	if _, err := s.db.Exec(`DELETE FROM rounds WHERE t < ?`, now-60); err != nil {
-		t.Fatal(err)
+	// min / median / p90 / max preserved in order
+	if out.MS[0] != 1 || out.MS[3] != 20 {
+		t.Fatalf("min/max wrong: %v", out.MS)
 	}
-	s.reclaim()
+	if out.MS[1] < out.MS[0] || out.MS[2] < out.MS[1] || out.MS[3] < out.MS[2] {
+		t.Fatalf("not sorted: %v", out.MS)
+	}
+	// everything else must survive untouched — this is what keeps one code path
+	if out.T != in.T || out.S != in.S || out.R != in.R || out.B != in.B || out.Z != in.Z {
+		t.Fatalf("metadata lost: %+v", out)
+	}
+	// idempotent: downsampling twice changes nothing
+	if again := downsampleRound(out); len(again.MS) != 4 || again.MS[0] != out.MS[0] {
+		t.Fatalf("not idempotent: %v", again.MS)
+	}
+}
 
-	after, _ := os.Stat(dbPath)
-	t.Logf("db size: %d KB -> %d KB", before.Size()/1024, after.Size()/1024)
-	if after.Size() >= before.Size() {
-		t.Fatalf("file did not shrink: %d -> %d", before.Size(), after.Size())
+func TestTierDownsamplesOldDays(t *testing.T) {
+	dir := t.TempDir()
+	s, err := NewStore(dir, []TargetCfg{{Name: "X", Type: "icmp", Host: "1.1.1.1", dir: "X"}})
+	if err != nil { t.Fatal(err) }
+	old := time.Now().AddDate(0, 0, -40).Format("2006-01-02")
+	recent := time.Now().AddDate(0, 0, -5).Format("2006-01-02")
+	ms := make([]float64, 20)
+	for i := range ms { ms[i] = float64(i + 30) }
+	for _, day := range []string{old, recent} {
+		f, _ := os.Create(dir + "/X/" + day + ".jsonl")
+		for i := 0; i < 10; i++ {
+			line, _ := json.Marshal(Round{T: time.Now().Unix() - int64(i*60), S: 20, R: 20, MS: ms})
+			f.Write(append(line, byte(10)))
+		}
+		f.Close()
+	}
+	s.Tier(30, 300)
+	oldRounds, _ := s.readDay("X", old)
+	newRounds, _ := s.readDay("X", recent)
+	if len(oldRounds) == 0 || len(oldRounds[0].MS) != 4 {
+		t.Fatalf("old day should be downsampled to 4 samples, got %d", len(oldRounds[0].MS))
+	}
+	if len(newRounds) == 0 || len(newRounds[0].MS) != 20 {
+		t.Fatalf("recent day must keep all samples, got %d", len(newRounds[0].MS))
+	}
+	if len(oldRounds) != 10 {
+		t.Fatalf("round count must survive downsampling: %d", len(oldRounds))
 	}
 }
