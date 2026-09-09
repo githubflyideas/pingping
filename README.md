@@ -28,8 +28,12 @@ Data cleanup
 Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh` is all you need
 (data is plain per-day JSONL, so cleanup is just find+delete):
 
-```bash
-./clean.sh 30    # delete probe data older than 30 days                          
+```
+# clean.sh [N] — delete pingping probe data older than N days (default 30).
+# Data files are plain per-day JSONL under ./data/<target>/YYYY-MM-DD.jsonl,
+# so cleanup is just find+delete. Run from the pingping directory.
+days="${1:-30}"
+find ./data -type f -name '20*.jsonl' -mtime +"$days" -print -delete    
 ```
 Latest [Releases](https://github.com/githubflyideas/pingping/releases)   
 
