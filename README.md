@@ -34,21 +34,16 @@ find ./data -type f -name '20*.jsonl' -mtime +"$days" -print -delete
 ```
 Latest [Releases](https://github.com/githubflyideas/pingping/releases)   
 
-## English
-
 PingPing is a lightweight network latency and link quality visualization tool.
 
 It may not be as powerful or feature-rich as Smokeping, but it's ridiculously lightweight.
 
 Single binary
 No Docker
-No make. Just scp and run.
 No database
+No web server
 Plain text configuration. Edit targets with your favorite editor—or even a single echo command.
 
-Download it, extract it, run ./pingping, then go grab a coffee.
-
-When you're back, open http://localhost:8517 and watch your first puff of network smoke.
 
 
 
