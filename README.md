@@ -1,8 +1,6 @@
-🌐 [English](#english) · [中文](#中文) · [Español](#español) · [Français](#français) · [Português](#português) · [Deutsch](#deutsch) · [Русский](#русский) · [日本語](#日本語) · [한국어](#한국어) · [Bahasa Indonesia](#bahasa-indonesia) · [Tiếng Việt](#tiếng-việt) · [العربية](#العربية) · [हिन्दी](#हिन्दी) · [বাংলা](#বাংলা) · [اردو](#اردو) · [Türkçe](#türkçe) · [ไทย](#ไทย)
+
 
 ![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero8.png)
-![window: a 40-minute congestion event — smoke spreads, bursts marked ◆](docs/hero9.png)
-
 
 A smokeping-like network tool.One binary file,
 Just scp and run
@@ -25,8 +23,7 @@ Add target host
  echo "10.0.0.5:443 ads-api"        >> targets/tcp.list
 ```
 Data cleanup
-Retention is fixed at 300 days. To purge earlier by hand, the bundled `clean.sh` is all you need
-(data is plain per-day JSONL, so cleanup is just find+delete):
+Retention is fixed at 300 days. To purge earlier by hand, just find+delete):
 
 ```
 # clean.sh [N] — delete pingping probe data older than N days (default 30).
