@@ -11,7 +11,7 @@
     "FileDescription":  "pingping — link quality monitoring service",
     "InternalName":     "pingping",
     "OriginalFilename": "pingping.exe",
-    "LegalCopyright":   "Copyright 2026 githubflyideas. Licensed under the Apache License, Version 2.0.",
+    "LegalCopyright":   "Copyright 2026 githubflyideas. Licensed under the Elastic License 2.0.",
     "FileVersion":      "0.1.0.0",
     "ProductVersion":   "0.1.0.0",
     "Comments":         "https://github.com/githubflyideas/pingping"

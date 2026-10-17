@@ -50,6 +50,9 @@ mv pingping-linux-amd64 pingping && chmod +x pingping
 
 ## License Terms
 
+pingping is licensed under the [Elastic License 2.0](LICENSE). Versions up to and including v0.5.9 were released under the Apache License 2.0.
+
+
 pingping is free for any individual or organization, including commercial use, provided that the original logo, project name, and author attribution are retained.
 
 The only paid option: replacing the original logo with a custom or corporate logo requires a one-time payment of $12 for a perpetual license.

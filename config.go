@@ -18,7 +18,7 @@ import (
 // reader to check, and a test asserts that it does. This project shipped four
 // places claiming MIT over an Apache 2.0 LICENSE once, so the claim and the
 // file are pinned to each other rather than both to somebody's memory.
-const licenceName = "Apache License 2.0"
+const licenceName = "Elastic License 2.0"
 
 type Config struct {
 	Listen        string

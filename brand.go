@@ -10,10 +10,9 @@ import (
 //
 // This exists because someone deploying pingping on a customer's network will
 // want the screen that customer looks at to carry the customer's mark, and that
-// is a reasonable thing to want. The licence does not require anything in
-// return, so neither does the software: there is no key to enter and nothing is
-// withheld. Apache 2.0 already permits rebranding, and a feature that pretends
-// otherwise would only be theatre.
+// is a reasonable thing to want. The software does not check for payment:
+// there is no key to enter and nothing is withheld. Replacing the logo is a paid licence term (see README), enforced by
+// the licence rather than by the software.
 //
 // It lives in the settings table rather than as a file beside the database so
 // that the brand travels with the data: copy the .db to another machine and the

@@ -13,16 +13,16 @@ import (
 func TestLicenceClaimMatchesTheFile(t *testing.T) {
 	file := readSource(t, "LICENSE")
 
-	if !strings.Contains(file, "Apache License") || !strings.Contains(file, "Version 2.0") {
-		t.Fatalf("LICENSE is not Apache 2.0 any more; licenceName says %q", licenceName)
+	if !strings.Contains(file, "Elastic License 2.0") {
+		t.Fatalf("LICENSE is not Elastic License 2.0 any more; licenceName says %q", licenceName)
 	}
-	if licenceName != "Apache License 2.0" {
-		t.Errorf("licenceName is %q but LICENSE is Apache 2.0", licenceName)
+	if licenceName != "Elastic License 2.0" {
+		t.Errorf("licenceName is %q but LICENSE is Elastic License 2.0", licenceName)
 	}
 	if got := readSource(t, "static/settings.html"); !strings.Contains(got, licenceName) {
 		t.Errorf("the settings page does not show %q", licenceName)
 	}
-	if got := readSource(t, "NOTICE"); !strings.Contains(got, "Apache") {
+	if got := readSource(t, "NOTICE"); !strings.Contains(got, "Elastic License 2.0") {
 		t.Errorf("NOTICE does not mention the licence")
 	}
 }

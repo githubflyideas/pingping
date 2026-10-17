@@ -603,7 +603,7 @@ func (t *tray) command(id uint32) {
 			m.AboutConsole + ":  " + t.consoleU + "\n" +
 			m.AboutStatus + ":  " + t.line(st) + "\n" +
 			m.AboutData + ":  " + dataDirForDisplay() + "\n\n" +
-			// The licence NAME is not translated — "Apache License 2.0" is what
+			// The licence NAME is not translated — "Elastic License 2.0" is what
 			// the LICENSE file says and what a reader has to be able to match
 			// against it. Only the label around it is. Without the name this
 			// line read "License" and stopped.
