@@ -115,6 +115,18 @@
      body text underneath them. */
   img.brand-ic { width:auto; height:52px; max-width:380px; object-fit:contain; }
   .hide { display:none; }
+  /* Header sponsor slot (234x60). sponsor.js centres it between the title block
+     and the controls when it fits (sp-in), or gives it its own row (sp-row). */
+  .hdr-sp { flex:none; align-self:center; width:234px; height:60px; margin:0 auto; }
+  header.sp-in > .hdr-actions, header.sp-in > .hdr-right { margin-left:0 !important; }
+  header.sp-notag > .tag { display:none; }
+  header.sp-row > .hdr-sp { order:99; flex-basis:100%; width:auto; display:flex; justify-content:center; margin:0; }
+  .hdr-sp-def { box-sizing:border-box; width:234px; height:60px; display:flex; flex-direction:column;
+                justify-content:center; align-items:center; gap:4px; border:1px dashed var(--line);
+                border-radius:6px; background:var(--panel); color:var(--ink); text-decoration:none;
+                font-family:var(--sans); font-size:var(--fs-small); }
+  .hdr-sp-def:hover { border-color:var(--phos); color:var(--phos); }
+  .hdr-sp-def small { font-size:var(--fs-micro); font-weight:700; letter-spacing:.16em; color:var(--dim); }
   .rng { display:flex; background:var(--panel); border:1px solid var(--line); border-radius:4px; overflow:hidden; }
   .rng span { color:var(--dim); font-family:var(--sans); font-size:var(--fs-micro);
               font-weight:600; padding:9px 10px 0 12px; letter-spacing:.14em; }
@@ -223,6 +235,7 @@ body.light input[type="datetime-local"]{
        belongs beside the title, not among the account and appearance controls on
        the right. Mixed in there it read as one more setting. -->
   <button class="pill" id="editBtn" title="add, edit or remove targets" style="display:none" data-i18n="console.targets">✎ targets</button>
+  <div class="hdr-sp" id="sponsorTop"><a class="hdr-sp-def" href="https://github.com/githubflyideas/ads-sponsor" target="_blank" rel="noopener"><small>SPONSOR</small><span>Sponsor slot — your ad here</span></a></div>
   <div class="hdr-actions">
     <button class="pill" id="themeBtn" title="switch theme">◐ <span id="themeName">dark</span></button>
     <span data-i18n-picker></span>
@@ -297,10 +310,9 @@ body.light input[type="datetime-local"]{
 </footer>
 
 <div class="promos">
-  <div class="promo sponsor" id="sponsorSlot">
-    <div class="promo-h">SPONSOR <span id="ver"></span></div>
+  <div class="promo">
     <div class="promo-b">
-      <span>This slot is for one VPS / IDC / network sponsor — your GIF here.</span>
+      <span class="promo-h" style="margin:0">pingping <span id="ver"></span></span>
       <span style="display:flex; gap:16px; align-items:center;">
         <a href="https://github.com/githubflyideas/pingping" target="_blank" rel="noopener">pingping on GitHub</a>
       </span>
