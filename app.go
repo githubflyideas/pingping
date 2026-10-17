@@ -90,6 +90,10 @@ func startApp(cfg *Config, portOverride int, bindOverridden bool) (*app, error) 
 	}
 	go store.flushLoop(a.stopC)
 	go housekeeping(cfg, store, a.stopC)
+	if sponsor == nil {
+		sponsor = newSponsorCache("pingping", cfg.DataDir)
+	}
+	go sponsor.run(a.stopC)
 	for _, ln := range lns {
 		go func(ln net.Listener) {
 			if err := a.srv.Serve(ln); err != nil && err != http.ErrServerClosed {

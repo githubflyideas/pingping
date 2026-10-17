@@ -123,6 +123,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 			}
 		}
 	}
+	registerSponsor(mux, guard) // same gate as the page that shows the slot
 	// write additionally refuses cross-origin form posts. A JSON content type
 	// forces a CORS preflight that we never answer, so a page on another site
 	// cannot drive these endpoints with the operator's cookie.
