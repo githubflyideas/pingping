@@ -50,7 +50,7 @@ mv pingping-linux-amd64 pingping && chmod +x pingping
 
 ### Sponsor slot
 
-The sponsor box in the web UI loads up to three images from [githubflyideas/ads-sponsor](https://github.com/githubflyideas/ads-sponsor) on GitHub (fetched by your browser, not by the server); if GitHub is unreachable it shows the built-in sponsor text instead.
+The sponsor box in the web UI loads up to four images from [githubflyideas/ads-sponsor](https://github.com/githubflyideas/ads-sponsor) on GitHub (fetched by your browser, not by the server); if GitHub is unreachable it shows the built-in sponsor text instead.
 
 ---
 
