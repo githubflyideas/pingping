@@ -48,6 +48,12 @@ mv pingping-linux-amd64 pingping && chmod +x pingping
 
 ---
 
+### Sponsor slot
+
+The sponsor box in the web UI loads up to three images from [githubflyideas/ads-sponsor](https://github.com/githubflyideas/ads-sponsor) on GitHub (fetched by your browser, not by the server); if GitHub is unreachable it shows the built-in sponsor text instead.
+
+---
+
 ## License Terms
 
 pingping is licensed under the [Elastic License 2.0](LICENSE). Versions up to and including v0.5.9 were released under the Apache License 2.0.
