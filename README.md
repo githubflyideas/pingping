@@ -1,4 +1,4 @@
-# pingping 
+# pingping
 
 > A modern, lightweight, and cross-platform SmokePing alternative.
 
@@ -10,30 +10,26 @@ It runs seamlessly across **Windows**, **Linux**, and **macOS**.
 <img width="1839" height="836" alt="image" src="https://github.com/user-attachments/assets/f77f5a58-50db-42b8-aaed-f1da2750068d" />
 <img width="1855" height="468" alt="image" src="https://github.com/user-attachments/assets/10b88274-871c-47ec-bf65-8eb935d8c118" />
 
+## Download & Quick Start
 
-
+### Linux (amd64)
 
 ```bash
-Linux-amd64
-https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-linux-amd64
-
 cd /home/
-wget  https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-linux-amd64
+wget https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-linux-amd64
 mv pingping-linux-amd64 pingping && chmod +x pingping
 ./pingping --port 8518
-#Open http://localhost:8518
-
-
-
-
-Windows
-
-https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-0.5.9-setup.exe
-
-macos
-
-https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-darwin-arm64
+# Open http://localhost:8518
 ```
+
+### Windows
+
+[pingping-0.5.9-setup.exe](https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-0.5.9-setup.exe)
+
+### macOS (Apple silicon)
+
+[pingping-darwin-arm64](https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-darwin-arm64)
+
 ### ✨ Key Features
 
 * 📊 **Latency & Packet Loss Visualization**: Displays historical ping trends and packet loss density using clear, SmokePing-style chart visualizations.
@@ -47,6 +43,17 @@ https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-dar
 ### 💡 Common Use Cases
 
 * **Server & Node Monitoring**: Track network quality across distributed servers and cloud instances.
-* **Troubleshooting**: Diagnose home/office network instability, VPN drops, or ISP packet loss over custom time ranges.
+* **Troubleshooting**: Diagnose home or office network instability, VPN drops, or ISP packet loss over custom time ranges.
 * **Route & Line Comparison**: Compare route stability across different ISPs or nodes over 24-hour periods.
 
+---
+
+## License Terms
+
+pingping is free for any individual or organization, including commercial use, provided that the original logo, project name, and author attribution are retained.
+
+The only paid option: replacing the original logo with a custom or corporate logo requires a one-time payment of $12 for a perpetual license.
+
+Selling, reselling, renting, or offering pingping as a paid service to others is prohibited.
+
+To purchase a license, contact the author: route66traffic66@gmail.com
