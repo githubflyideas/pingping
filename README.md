@@ -16,7 +16,7 @@ It runs seamlessly across **Windows**, **Linux**, and **macOS**.
 
 ```bash
 cd /home/
-wget https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-linux-amd64
+wget https://github.com/githubflyideas/pingping/releases/download/v0.6.0/pingping-linux-amd64
 mv pingping-linux-amd64 pingping && chmod +x pingping
 ./pingping --port 8518
 # Open http://localhost:8518
@@ -24,11 +24,11 @@ mv pingping-linux-amd64 pingping && chmod +x pingping
 
 ### Windows
 
-[pingping-0.5.9-setup.exe](https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-0.5.9-setup.exe)
+[pingping-0.6.0-setup.exe](https://github.com/githubflyideas/pingping/releases/download/v0.6.0/pingping-0.6.0-setup.exe)
 
 ### macOS (Apple silicon)
 
-[pingping-darwin-arm64](https://github.com/githubflyideas/pingping/releases/download/v0.5.9/pingping-darwin-arm64)
+[pingping-darwin-arm64](https://github.com/githubflyideas/pingping/releases/download/v0.6.0/pingping-darwin-arm64)
 
 ### ✨ Key Features
 
