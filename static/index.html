@@ -135,6 +135,12 @@
   .rng button:hover { color:var(--ink); }
   .rng button.on { background:color-mix(in srgb, var(--amber) 15%, transparent);
                    color:var(--amber); font-weight:700; }
+  /* 同时期对比:一个下拉,和 TIME/DIV 并排,沿用同一套面板样式 */
+  .rng select { font-family:var(--sans); font-size:var(--fs-small); background:none; border:0;
+                color:var(--ink); padding:7px 10px 7px 4px; cursor:pointer; }
+  .rng select:focus { outline:none; color:var(--phos); }
+  .rng select option { background:var(--panel); color:var(--ink); }
+  .rng select option:disabled { color:var(--dim); }
   .scope { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:14px; }
   .crt { position:relative; }
   #chart { height:420px; background:var(--screen); border-radius:4px; }
@@ -295,6 +301,15 @@ body.light input[type="datetime-local"]{
       <button data-m="172800">120d</button>
       <button data-m="432000">300d</button>
     </div>
+    <div class="rng cmp" data-i18n-title="console.cmpTitle" title="Overlay the median of an earlier period as a dashed line">
+      <span data-i18n="console.compare">COMPARE</span>
+      <select id="cmpMode" aria-label="compare">
+        <option value="off" data-i18n="console.cmpOff">Off</option>
+        <option value="prev" data-i18n="console.cmpPrev">Previous period</option>
+        <option value="day" data-i18n="console.cmpDay">Yesterday, same time</option>
+        <option value="week" data-i18n="console.cmpWeek">Last week, same time</option>
+      </select>
+    </div>
     <div class="rng custom">
       <input type="datetime-local" id="customFrom" step="60">
       <span class="sep">→</span>
@@ -366,6 +381,112 @@ async function loadTargets() {
 }
 
 let sel = null; // {from,to} 自定义查询区间(unix 秒)
+
+// ---- 同时期对比虚线 ----
+// 取同一目标更早的一段(当前窗口整体前移 shift 秒),再把时间戳加回 shift 叠到当前窗口上。
+// 后端不用改:/api/series 本来就支持 from/to。模式只放内存,和时间窗一样不持久化。
+let cmpMode = 'off';
+let cmpData = null;      // 当前图上对比线的数据,tooltip 用
+let cmpInflight = null;  // 对比请求单独一个 AbortController,新渲染开始时一并掐掉
+let retentionSec = 0;    // /api/version 的 retention_days;0 = 还不知道,先不限制
+const RAW_KEEP = 2 * 86400; // 原始样本只留 HotDays(2 天),再早只剩小时汇总
+const CMP_KEYS = { prev: 'console.cmpPrev', day: 'console.cmpDay', week: 'console.cmpWeek' };
+const cmpShift = (mode, w) => mode === 'prev' ? w : mode === 'day' ? 86400 : mode === 'week' ? 604800 : 0;
+// 当前窗口 [from,to](unix 秒)。预设时间窗按本地时钟算,和服务端的 now 差几秒无所谓。
+function curWindow() {
+  if (sel) return { from: sel.from, to: sel.to };
+  const to = Math.floor(Date.now() / 1000);
+  return { from: to - minutes * 60, to };
+}
+// 对比段整个必须落在保留期内:最早的点 from - shift >= now - retention。
+function cmpValid(mode, win) {
+  if (mode === 'off') return true;
+  if (!retentionSec) return true;
+  const now = Math.floor(Date.now() / 1000);
+  return (now - win.from) + cmpShift(mode, win.to - win.from) <= retentionSec;
+}
+// 把选不了的模式置灰;当前模式失效就退回关闭。返回是否发生了回退。
+function syncCmpOptions(win) {
+  const box = $('cmpMode');
+  // 主窗口本身已超出保留期时,shift>0 的模式一律不满足,全部置灰。
+  [...box.options].forEach(o => {
+    o.disabled = !cmpValid(o.value, win);
+    o.title = o.disabled ? T('console.cmpBeyond') : '';
+  });
+  const fell = !cmpValid(cmpMode, win);
+  if (fell) cmpMode = 'off';
+  box.value = cmpMode;
+  return fell;
+}
+
+// Row -> median, shared by the main chart and the compare line. Raw rounds carry
+// samples (median of the sorted samples); hourly buckets carry five percentiles
+// [min,p50,p90,p99,max] and the median is q[1] — sorting those five and taking the
+// middle would give P90, not a median.
+function roundMedian(r) {
+  const srt = (r.ms && r.ms.length) ? [...r.ms].sort((a,b)=>a-b) : [];
+  return { srt, med: srt.length ? srt[Math.floor(srt.length/2)] : 0 };
+}
+const bucketMedian = b => b.q ? b.q[1] : undefined;
+// [[ts_ms, median], ...] for a whole /api/series response, shifted by shiftSec.
+function medianLine(d, shiftSec = 0) {
+  const off = shiftSec * 1000, out = [];
+  if (d.tier === 'hourly') {
+    (d.buckets || []).forEach(b => { const m = bucketMedian(b); if (m !== undefined) out.push([b.t * 1000 + off, m]); });
+  } else {
+    (d.rounds || []).forEach(r => { const { srt, med } = roundMedian(r); if (srt.length) out.push([r.t * 1000 + off, med]); });
+  }
+  return out;
+}
+
+// 拉对比段。任何失败(网络、被掐、坏 JSON)都返回 null —— 对比线画不出来不能拖垮主图。
+// 请求成功但对比段没数据(新装、数据还不够早)返回 { empty: true },图例上提示一句。
+async function fetchCompare(name, win, mode) {
+  const shift = cmpShift(mode, win.to - win.from);
+  const from = win.from - shift, to = win.to - shift;
+  let reqFrom = from;
+  // 服务端按跨度选层:<=24h 读原始样本。对比段若早于原始样本的保留期,原始层是空的,
+  // 于是把请求放宽到 25h 逼它返回小时汇总,拿回来再裁回 [from,to]。
+  const now = Math.floor(Date.now() / 1000);
+  const widen = (to - from) <= 86400 && from < now - RAW_KEEP - 3600;
+  if (widen) reqFrom = to - 86400 - 3600;
+  if (cmpInflight) cmpInflight.abort();
+  const ctl = new AbortController();
+  cmpInflight = ctl;
+  try {
+    const res = await fetch(`/api/series?target=${encodeURIComponent(name)}&from=${reqFrom}&to=${to}`, { signal: ctl.signal });
+    if (!res.ok) return null;
+    const d = await res.json() || {};
+    if (widen && d.tier === 'hourly') d.buckets = (d.buckets || []).filter(b => b.t > from - 3600 && b.t <= to);
+    const pts = medianLine(d, shift);
+    if (!pts.length) return { mode, empty: true };
+    // 跨过窗口起点的那个小时桶盖的是桶起点,平移后会落在窗口左边、把 x 轴撑宽;夹到窗口起点
+    if (pts[0][0] < win.from * 1000) pts[0][0] = win.from * 1000;
+    const hourly = d.tier === 'hourly';
+    // 原始层的点间隔 = 探测间隔;查 tooltip 时用它当"附近"的容差
+    let gap = 3600e3;
+    if (!hourly && pts.length > 1) {
+      const ds = pts.slice(1).map((p, i) => p[0] - pts[i][0]).sort((a,b)=>a-b);
+      gap = ds[Math.floor(ds.length/2)] || 60e3;
+    }
+    return { mode, hourly, pts, gap };
+  } catch {
+    return null;
+  } finally {
+    if (cmpInflight === ctl) cmpInflight = null;
+  }
+}
+// 悬停时间 ts 对应的对比值。小时汇总按桶起点盖章,取包含 ts 的那个桶;原始层取最近的一轮。
+function cmpValueAt(cmp, ts) {
+  if (!cmp || !cmp.pts.length) return undefined;
+  const a = cmp.pts;
+  let lo = 0, hi = a.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (a[mid][0] <= ts) lo = mid; else hi = mid - 1; }
+  if (cmp.hourly) return (a[lo][0] <= ts && ts - a[lo][0] < 3600e3) ? a[lo][1] : undefined;
+  let best = a[lo];
+  if (lo + 1 < a.length && Math.abs(a[lo+1][0] - ts) < Math.abs(best[0] - ts)) best = a[lo+1];
+  return Math.abs(best[0] - ts) <= cmp.gap * 0.6 ? best[1] : undefined;
+}
 let renderSeq = 0;
 let inflight = null; // 正在飞的 series 请求 —— 新请求发起前先掐掉它,
                      // 否则快速点击会在服务端堆起一串没人要的慢查询,互相拖死。
@@ -388,8 +509,14 @@ async function renderInner(seq) {
   if (sel) url += `&from=${sel.from}&to=${sel.to}`;
   else url += `&minutes=${minutes}`;
   if (inflight) inflight.abort();
+  if (cmpInflight) { cmpInflight.abort(); cmpInflight = null; }
   const ctl = new AbortController();
   inflight = ctl;
+  // 对比段和主图并行拉,不叠加延迟;主图先画,对比线到了再补上。
+  const win = curWindow();
+  syncCmpOptions(win);
+  const mode = cmpMode;
+  const cmpP = mode !== 'off' ? fetchCompare(current, win, mode) : Promise.resolve(null);
   let d;
   try {
     d = await (await fetch(url, { signal: ctl.signal })).json() || {};
@@ -413,8 +540,7 @@ async function renderInner(seq) {
     const pool = [];
     (d.rounds || []).forEach(r => {
       const ts = r.t * 1000;
-      const srt = (r.ms && r.ms.length) ? [...r.ms].sort((a,b)=>a-b) : [];
-      const rmed = srt.length ? srt[Math.floor(srt.length/2)] : 0;
+      const { srt, med: rmed } = roundMedian(r);
       if (srt.length) median.push([ts, rmed]);
       srt.forEach(v => {
         smoke.push([ts, v, rmed ? Math.abs(v - rmed) / rmed : 0]); // 维度2 = 偏离该轮中位数的比例
@@ -442,7 +568,7 @@ async function renderInner(seq) {
     (d.buckets || []).forEach(b => {
       const ts = b.t * 1000;
       if (b.q) {
-        const m = b.q[1];
+        const m = bucketMedian(b);
         median.push([ts, m]);
         b.q.forEach(v => smoke.push([ts, v, m ? Math.abs(v - m) / m : 0]));
         qs.forEach((arr, i) => arr.push([b.q[i+1], b.n]));
@@ -469,7 +595,9 @@ async function renderInner(seq) {
   // T(), not a literal: this runs on every redraw and overwrites whatever the
   // data-i18n pass put here, so the markup version below used to be assigned to
   // textContent and rendered as visible angle brackets.
-  $('legend').textContent = hourly ? T('console.legendHourly') : T('console.legend');
+  const cmpName = mode !== 'off' ? T(CMP_KEYS[mode]) + ' · P50' : '';
+  $('legend').textContent = (hourly ? T('console.legendHourly') : T('console.legend')) +
+                            (cmpName ? ` · ┄ = ${cmpName}` : '');
   const approx = hourly ? '≈' : '';
   const fmt = v => v === undefined ? '–' : approx + v.toFixed(1);
   ['p50','p90','p99'].forEach((id, i) => {
@@ -481,8 +609,8 @@ async function renderInner(seq) {
   $('bursts').textContent = bursts;
   $('bursts').className = 'v' + (bursts ? ' bad' : '');
 
-  const win = sel ? 'custom' : (document.querySelector('.rng button[data-m].on')?.textContent || minutes + 'm');
-  $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${win} P99 ${fmt(p99)} ms · loss ${lossPct.toFixed(2)}% · ${bursts} bursts`;
+  const winLabel = sel ? 'custom' : (document.querySelector('.rng button[data-m].on')?.textContent || minutes + 'm');
+  $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${winLabel} P99 ${fmt(p99)} ms · loss ${lossPct.toFixed(2)}% · ${bursts} bursts`;
 
   const phos = cssv('--phos');
   chart.setOption({
@@ -514,23 +642,37 @@ async function renderInner(seq) {
       backgroundColor: cssv('--panel'), borderColor: cssv('--line'),
       textStyle: { color: cssv('--ink'), fontSize: 11, fontFamily: 'monospace' },
       formatter: params => {
-        const ts = params[0] && params[0].axisValue;
+        // 以主中位线的点为准取时间:对比线的点(平移过的时间戳)也会进 params,
+        // 不能让它决定 roundInfo 查哪一轮。
+        const mp = params.find(p => p.seriesId === 'median');
+        const ts = mp ? mp.value[0] : (params[0] && params[0].axisValue);
         const i = roundInfo[ts];
         if (!i) return '';
         let html = `<b>${new Date(+ts).toLocaleString()}</b>`;
+        const cv = cmpValueAt(cmpData, +ts);
+        const cur = i.hourly ? (i.q ? i.q[1] : undefined) : (i.n ? i.med : undefined);
+        let cmpLine = '';
+        if (cv !== undefined) {
+          cmpLine = `<br><span style="color:${cssv('--dim')}">┄ ${T(CMP_KEYS[cmpData.mode])} <b>${cv.toFixed(1)} ms</b>`;
+          if (cur !== undefined && cv > 0) {
+            const dp = (cur - cv) / cv * 100;
+            cmpLine += ` · Δ <b style="color:${dp > 0 ? cssv('--alert') : cssv('--phos')}">${dp >= 0 ? '+' : ''}${dp.toFixed(1)}%</b>`;
+          }
+          cmpLine += '</span>';
+        }
         if (i.hourly) {
           const f = v => v.toFixed(1);
           html += i.q ? `<br>hour min/p50/p90/p99/max = ${i.q.map(f).join('/')} ms` : '<br>no replies this hour';
           html += `<br>${i.n} rounds`;
           html += `<br><span style="color:${i.lp > 0 ? cssv('--alert') : cssv('--dim')}">loss <b>${i.lp.toFixed(2)}%</b></span>`;
           if (i.bursts) html += ` <span style="color:${cssv('--alert')}">· ◆ ${i.bursts} burst${i.bursts > 1 ? 's' : ''}</span>`;
-          return html;
+          return html + cmpLine;
         }
         html += `<br>rtt min/avg/max/mdev = ${i.lo.toFixed(3)}/${i.avg.toFixed(3)}/${i.hi.toFixed(3)}/${i.mdev.toFixed(3)} ms`;
         html += `<br>median <b>${i.med.toFixed(1)} ms</b> · ${i.n} samples`;
         html += `<br><span style="color:${i.lp > 0 ? cssv('--alert') : cssv('--dim')}">loss <b>${i.lp.toFixed(0)}%</b> (${i.lost}/${i.s})</span>`;
         if (i.b) html += ` <span style="color:${cssv('--alert')}">· ◆ burst z=${i.z ? i.z.toFixed(2) : '—'}</span>`;
-        return html;
+        return html + cmpLine;
       } },
     // 荧光束渐变:贴线的样本 = 炽亮核心,散开的样本渐冷渐暗
     visualMap: { show: false, type: 'continuous', dimension: 2, min: 0, max: 0.5,
@@ -541,16 +683,31 @@ async function renderInner(seq) {
       { type: 'scatter', data: smoke, symbolSize: 2.2, silent: true, large: true },
       { type: 'line', data: median, showSymbol: false, silent: true, z: 4,
         lineStyle: { color: phos, width: 7, opacity: 0.10 } },
-      { type: 'line', data: median, showSymbol: false,
+      { id: 'median', type: 'line', data: median, showSymbol: false,
         lineStyle: { color: phos, width: 1.6, shadowColor: phos, shadowBlur: +cssv('--glow') * 2 }, z: 5 },
       { type: 'bar', yAxisIndex: 1, data: lossBars, barMaxWidth: 3,
         itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1,
           [{ offset: 0, color: cssv('--alert') }, { offset: 1, color: cssv('--lossbar') }]) } },
       { type: 'scatter', yAxisIndex: 1, data: burstPts, symbol: 'diamond',
         symbolSize: 9, itemStyle: { color: cssv('--alert') }, z: 6,
-        tooltip: { formatter: p => `◆ ${p.value[2]}` } }
+        tooltip: { formatter: p => `◆ ${p.value[2]}` } },
+      // 对比虚线:只画 P50,不画烟。数据异步补进来(按 id 合并)。
+      { id: 'cmp', name: cmpName, type: 'line', data: [], showSymbol: false, z: 3,
+        lineStyle: { color: cssv('--dim'), width: 1.3, type: 'dashed', opacity: 0.9 },
+        itemStyle: { color: cssv('--dim') } }
     ]
   }, true);
+  cmpData = null;
+
+  const cmp = await cmpP;
+  if (seq !== renderSeq || !cmp || cmp.mode !== cmpMode) return; // 过期 / 失败 / 已切换:主图照旧
+  if (cmp.empty) { // 有多少画多少;一点都没有就只在图例上说明
+    $('legend').textContent += ` (${T('console.cmpNoData')})`;
+    return;
+  }
+  cmpData = cmp;
+  // 当前是原始层而对比段只剩小时汇总时,按桶画阶梯线(桶以起点盖章,值管到下一个桶)
+  chart.setOption({ series: [{ id: 'cmp', data: cmp.pts, step: (cmp.hourly && !hourly) ? 'end' : false }] });
 }
 
 
@@ -575,6 +732,7 @@ $('customGo').onclick = () => {
   $('selReset').style.display = '';
   render();
 };
+$('cmpMode').onchange = () => { cmpMode = $('cmpMode').value; render(); };
 document.querySelectorAll('#tfilter button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tfilter button').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
@@ -604,6 +762,8 @@ fetch('/api/version').then(r => r.json()).then(d => {
   const el = $('ver');
   if (el && d.version) el.textContent = 'v' + String(d.version).replace(/^v/, '');
   const keep = (d.retention_days || 0) * 1440;
+  retentionSec = keep * 60;
+  if (syncCmpOptions(curWindow())) render(); // 当前对比模式超出保留期 -> 已退回关闭,重画
   if (keep > 0) {
     document.querySelectorAll('.rng button[data-m]').forEach(b => {
       if (+b.dataset.m > keep) b.style.display = 'none';
