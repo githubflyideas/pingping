@@ -656,6 +656,16 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 			done(w, t, err, "created")
 		}
 	}))
+	// Export and import of the target list as a "netping-targets" file (see
+	// targetsio.go). Export is gated like GET /api/targets, so a viewer can take a
+	// copy of what they can already read; import changes what this host probes and
+	// is admin-only, like every other target write.
+	mux.HandleFunc("GET /api/targets/export", guard(func(w http.ResponseWriter, r *http.Request) {
+		serveTargetsExport(w, store, "pingping")
+	}))
+	mux.HandleFunc("POST /api/targets/import", admin(func(w http.ResponseWriter, r *http.Request) {
+		serveTargetsImport(w, r, store, run)
+	}))
 	mux.HandleFunc("PUT /api/targets/{id}", admin(func(w http.ResponseWriter, r *http.Request) {
 		id, ok := targetID(w, r)
 		if !ok {

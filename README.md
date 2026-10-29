@@ -30,6 +30,28 @@ mv pingping-linux-amd64 pingping && chmod +x pingping
 
 [pingping-darwin-arm64](https://github.com/githubflyideas/pingping/releases/download/v0.6.2/pingping-darwin-arm64)
 
+### Export / import targets
+
+In the console, **✎ targets → ⇩ export** downloads the active targets as `pingping-targets-YYYYMMDD.json`; **⇧ import…** (or dropping a file on the panel) shows a preview — what will be added, skipped because the name already exists, or rejected and why — before anything changes. Import only adds: existing targets are never changed or removed, and the whole file is applied in one go or not at all. Export is open to every signed-in account; import is admin-only. The same file works in [fogping](https://github.com/githubflyideas/fogping).
+
+```json
+{
+  "format": "netping-targets",
+  "version": 1,
+  "name": "Japan top 3",
+  "targets": [
+    {"name": "Google JP", "type": "tcp", "host": "www.google.co.jp", "port": 443, "pace": "normal"},
+    {"name": "Gateway", "type": "ping", "host": "10.0.0.1", "pace": "fast", "interval": 10}
+  ]
+}
+```
+
+`type` is `ping` or `tcp`, `port` is for tcp only, `pace` is `fast` / `normal` / `slow`, `interval` (seconds) is optional. Importing makes this host probe every address in the file, so only import lists you trust. Full spec: [docs/targets-format.md](docs/targets-format.md) · JSON Schema: [docs/targets.schema.json](docs/targets.schema.json).
+
+Ready-made lists: see presets/ (coming).
+
+---
+
 ### ✨ Key Features
 
 * 📊 **Latency & Packet Loss Visualization**: Displays historical ping trends and packet loss density using clear, SmokePing-style chart visualizations.
