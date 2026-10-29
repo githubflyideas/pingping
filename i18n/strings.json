@@ -1176,6 +1176,18 @@
       "ja": "比較期間のデータなし",
       "ko": "비교 기간에 데이터 없음"
     },
+    "console.cmpUnavailable": {
+      "en": "comparison data unavailable",
+      "zh": "对比数据不可用",
+      "es": "datos de comparación no disponibles",
+      "fr": "données de comparaison indisponibles",
+      "pt": "dados de comparação indisponíveis",
+      "ru": "данные для сравнения недоступны",
+      "id": "data pembanding tidak tersedia",
+      "de": "Vergleichsdaten nicht verfügbar",
+      "ja": "比較データを取得できません",
+      "ko": "비교 데이터를 사용할 수 없음"
+    },
     "console.tagline": {
       "en": "One binary. One graph. One metric: Latency.",
       "zh": "一个文件。一张图。一个指标：延迟。",

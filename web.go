@@ -548,6 +548,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		writeJSON(w, map[string]any{
 			"version":        version,
 			"retention_days": cfg.RetentionDays,
+			"hot_days":       cfg.HotDays, // 原始样本保留天数,控制台据此判断对比段读原始层还是小时汇总
 			"has_logo":       func() bool { _, _, ok := store.Logo(); return ok }(),
 			"needs_setup":    store.NeedsSetup(),
 			"authed":         authed(r),

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -173,5 +174,32 @@ func TestLogoPickerHasNoFilter(t *testing.T) {
 	if strings.Contains(strings.ToLower(tag), "accept") {
 		t.Errorf("the logo picker declares a filter (%s); the server sniffs the "+
 			"content anyway, and a filter that guesses wrong shows an empty folder", tag)
+	}
+}
+
+// The console reads hot_days from /api/version to know when the compare overlay
+// has to ask for hourly buckets instead of raw rounds. It used to hard-code the
+// default two days, which would quietly go wrong the day HotDays changes.
+func TestVersionReportsHotDays(t *testing.T) {
+	s, err := NewStore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	h := newMux(&Config{HotDays: 3, RetentionDays: 300}, s, NewRunner(ProbeCfg{}, s, NewDetector(s)))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/api/version", nil))
+	if rec.Code != 200 {
+		t.Fatalf("GET /api/version: status %d", rec.Code)
+	}
+	var v struct {
+		HotDays       int `json:"hot_days"`
+		RetentionDays int `json:"retention_days"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.HotDays != 3 || v.RetentionDays != 300 {
+		t.Errorf("hot_days=%d retention_days=%d, want 3 and 300", v.HotDays, v.RetentionDays)
 	}
 }

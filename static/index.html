@@ -21,6 +21,9 @@
     --bg:#14161a; --panel:#1c2027; --screen:#0d0f13; --line:#2b323c;
     --phos:#22d3ee; --amber:#fbbf24; --alert:#fb3b53; --ink:#c0c6ce; --dim:#78848f;
     --grid-axis:#333b47; --grid-split:#1c222a;
+    /* 对比虚线。深色主题直接用 --dim(对 --screen ≈5:1);浅色主题的 --dim 只有 ≈3.5:1,
+       各自给一个更深的同色系灰,保证 >=4.5:1 */
+    --cmp:#78848f;
     --smoke:rgba(251,191,36,.20); --lossbar:rgba(251,59,83,.7); --glow:5;
     --smoke-hot:#b86e14; --smoke-mid:#8c3f0d; --smoke-cool:#452740;
     --shadow:0 1px 2px rgba(0,0,0,.45); --shadow-lg:0 12px 32px rgba(0,0,0,.45);
@@ -38,7 +41,7 @@
   html[data-theme="daylight"] {
     --bg:#f2efe6; --panel:#fbf9f3; --screen:#fffdf7; --line:#ddd6c4;
     --phos:#1d4ed8; --amber:#b45309; --alert:#be123c; --ink:#3e4346; --dim:#8a8677;
-    --grid-axis:#cdc6b2; --grid-split:#e9e3d3;
+    --grid-axis:#cdc6b2; --grid-split:#e9e3d3; --cmp:#6b6656;
     --smoke:rgba(180,83,9,.22); --lossbar:rgba(190,18,60,.6); --glow:0;
     --smoke-hot:#e07a3a; --smoke-mid:#e8a878; --smoke-cool:#cfc8b8;
     --shadow:0 1px 3px rgba(80,70,40,.12); --shadow-lg:0 12px 30px rgba(80,70,40,.16);
@@ -48,7 +51,7 @@
   html[data-theme="arctic"] {
     --bg:#eaeff4; --panel:#f7fafc; --screen:#fdfeff; --line:#d3dce5;
     --phos:#0f172a; --amber:#0369a1; --alert:#dc2626; --ink:#3a4353; --dim:#7d8b99;
-    --grid-axis:#c2cdd8; --grid-split:#e2e9f0;
+    --grid-axis:#c2cdd8; --grid-split:#e2e9f0; --cmp:#5b6878;
     --smoke:rgba(56,132,199,.22); --lossbar:rgba(220,38,38,.55); --glow:0;
     --smoke-hot:#4a9fd4; --smoke-mid:#8dc0e0; --smoke-cool:#cfe0ec;
     --shadow:0 1px 3px rgba(30,50,70,.10); --shadow-lg:0 12px 30px rgba(30,50,70,.14);
@@ -58,7 +61,7 @@
   html[data-theme="budapest"] {
     --bg:#f7ebe8; --panel:#fdf5f2; --screen:#fffaf8; --line:#e6cfc8;
     --phos:#5b2a4f; --amber:#c9754f; --alert:#c1362f; --ink:#4c3d41; --dim:#9c8087;
-    --grid-axis:#dcc0b8; --grid-split:#f0e0da;
+    --grid-axis:#dcc0b8; --grid-split:#f0e0da; --cmp:#7d5f66;
     --smoke:rgba(216,133,140,.26); --lossbar:rgba(193,54,47,.55); --glow:0;
     --smoke-hot:#e0748c; --smoke-mid:#eaa8ae; --smoke-cool:#f0dbd2;
     --shadow:0 1px 3px rgba(120,80,80,.12); --shadow-lg:0 12px 30px rgba(120,80,80,.16);
@@ -70,7 +73,7 @@
   html[data-theme="amber"] {
     --bg:#12100a; --panel:#1c1810; --screen:#0a0806; --line:#38301c;
     --phos:#ffd75e; --amber:#ffd98a; --alert:#ff5f2e; --ink:#cebd95; --dim:#8f7b4e;
-    --grid-axis:#443a20; --grid-split:#1e1a10;
+    --grid-axis:#443a20; --grid-split:#1e1a10; --cmp:#8f7b4e;
     --smoke:rgba(255,176,0,.20); --lossbar:rgba(255,95,46,.65); --glow:7;
     --smoke-hot:#a86a10; --smoke-mid:#7d4508; --smoke-cool:#2f4429;
     --shadow:0 1px 2px rgba(0,0,0,.6); --shadow-lg:0 12px 32px rgba(0,0,0,.55);
@@ -389,7 +392,10 @@ let cmpMode = 'off';
 let cmpData = null;      // 当前图上对比线的数据,tooltip 用
 let cmpInflight = null;  // 对比请求单独一个 AbortController,新渲染开始时一并掐掉
 let retentionSec = 0;    // /api/version 的 retention_days;0 = 还不知道,先不限制
-const RAW_KEEP = 2 * 86400; // 原始样本只留 HotDays(2 天),再早只剩小时汇总
+// 原始样本只留 HotDays,再早只剩小时汇总。以 /api/version 的 hot_days 为准,
+// 没拿到(旧服务端 / 请求还没回来)就按默认的 2 天算。
+let rawKeepSec = 2 * 86400;
+const CMP_TIMEOUT = 15000; // 对比请求最多等 15 秒,超时算"不可用",不能把自动刷新一直卡住
 const CMP_KEYS = { prev: 'console.cmpPrev', day: 'console.cmpDay', week: 'console.cmpWeek' };
 const cmpShift = (mode, w) => mode === 'prev' ? w : mode === 'day' ? 86400 : mode === 'week' ? 604800 : 0;
 // 当前窗口 [from,to](unix 秒)。预设时间窗按本地时钟算,和服务端的 now 差几秒无所谓。
@@ -439,7 +445,8 @@ function medianLine(d, shiftSec = 0) {
   return out;
 }
 
-// 拉对比段。任何失败(网络、被掐、坏 JSON)都返回 null —— 对比线画不出来不能拖垮主图。
+// 拉对比段。被新渲染掐掉返回 null(静默);其它失败(HTTP 错误、网络、坏 JSON、超时)
+// 返回 { failed: true },图例上改成"对比数据不可用" —— 对比线画不出来不能拖垮主图。
 // 请求成功但对比段没数据(新装、数据还不够早)返回 { empty: true },图例上提示一句。
 async function fetchCompare(name, win, mode) {
   const shift = cmpShift(mode, win.to - win.from);
@@ -448,14 +455,17 @@ async function fetchCompare(name, win, mode) {
   // 服务端按跨度选层:<=24h 读原始样本。对比段若早于原始样本的保留期,原始层是空的,
   // 于是把请求放宽到 25h 逼它返回小时汇总,拿回来再裁回 [from,to]。
   const now = Math.floor(Date.now() / 1000);
-  const widen = (to - from) <= 86400 && from < now - RAW_KEEP - 3600;
+  const widen = (to - from) <= 86400 && from < now - rawKeepSec - 3600;
   if (widen) reqFrom = to - 86400 - 3600;
   if (cmpInflight) cmpInflight.abort();
   const ctl = new AbortController();
   cmpInflight = ctl;
+  // 超时也走同一个 AbortController,用 timedOut 和"被新渲染取代"区分开
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, CMP_TIMEOUT);
   try {
     const res = await fetch(`/api/series?target=${encodeURIComponent(name)}&from=${reqFrom}&to=${to}`, { signal: ctl.signal });
-    if (!res.ok) return null;
+    if (!res.ok) return { mode, failed: true };
     const d = await res.json() || {};
     if (widen && d.tier === 'hourly') d.buckets = (d.buckets || []).filter(b => b.t > from - 3600 && b.t <= to);
     const pts = medianLine(d, shift);
@@ -471,8 +481,9 @@ async function fetchCompare(name, win, mode) {
     }
     return { mode, hourly, pts, gap };
   } catch {
-    return null;
+    return (ctl.signal.aborted && !timedOut) ? null : { mode, failed: true };
   } finally {
+    clearTimeout(timer);
     if (cmpInflight === ctl) cmpInflight = null;
   }
 }
@@ -503,6 +514,9 @@ async function render() {
 
 async function renderInner(seq) {
   await loadTargets();
+  // 被更新的一次渲染取代了:直接退出。否则下面的 abort() 会掐掉最新那次的请求,
+  // 图就停在旧时间窗上,要等下一次刷新才恢复。
+  if (seq !== renderSeq) return;
   const t = targets.find(x => x.name === current);
   if (!t) return;
   let url = `/api/series?target=${encodeURIComponent(current)}`;
@@ -596,8 +610,8 @@ async function renderInner(seq) {
   // data-i18n pass put here, so the markup version below used to be assigned to
   // textContent and rendered as visible angle brackets.
   const cmpName = mode !== 'off' ? T(CMP_KEYS[mode]) + ' · P50' : '';
-  $('legend').textContent = (hourly ? T('console.legendHourly') : T('console.legend')) +
-                            (cmpName ? ` · ┄ = ${cmpName}` : '');
+  const legendBase = hourly ? T('console.legendHourly') : T('console.legend');
+  $('legend').textContent = legendBase + (cmpName ? ` · ┄ = ${cmpName}` : '');
   const approx = hourly ? '≈' : '';
   const fmt = v => v === undefined ? '–' : approx + v.toFixed(1);
   ['p50','p90','p99'].forEach((id, i) => {
@@ -612,7 +626,12 @@ async function renderInner(seq) {
   const winLabel = sel ? 'custom' : (document.querySelector('.rng button[data-m].on')?.textContent || minutes + 'm');
   $('conclusion').textContent = (t.down ? '🔴 ' : '🟢 ') + `${t.name}: ${winLabel} P99 ${fmt(p99)} ms · loss ${lossPct.toFixed(2)}% · ${bursts} bursts`;
 
-  const phos = cssv('--phos');
+  // 主图自己的最高点(烟 + 中位线),对比段远高于它时 Y 轴按它定,见下面的对比线
+  let mainTop = 0;
+  smoke.forEach(p => { if (p[1] > mainTop) mainTop = p[1]; });
+  median.forEach(p => { if (p[1] > mainTop) mainTop = p[1]; });
+
+  const phos = cssv('--phos'), cmpColor = cssv('--cmp') || cssv('--dim');
   chart.setOption({
     animation: false,
     grid: { left: 52, right: 46, top: 18, bottom: 42 },
@@ -653,7 +672,7 @@ async function renderInner(seq) {
         const cur = i.hourly ? (i.q ? i.q[1] : undefined) : (i.n ? i.med : undefined);
         let cmpLine = '';
         if (cv !== undefined) {
-          cmpLine = `<br><span style="color:${cssv('--dim')}">┄ ${T(CMP_KEYS[cmpData.mode])} <b>${cv.toFixed(1)} ms</b>`;
+          cmpLine = `<br><span style="color:${cmpColor}">┄ ${T(CMP_KEYS[cmpData.mode])} <b>${cv.toFixed(1)} ms</b>`;
           if (cur !== undefined && cv > 0) {
             const dp = (cur - cv) / cv * 100;
             cmpLine += ` · Δ <b style="color:${dp > 0 ? cssv('--alert') : cssv('--phos')}">${dp >= 0 ? '+' : ''}${dp.toFixed(1)}%</b>`;
@@ -693,21 +712,43 @@ async function renderInner(seq) {
         tooltip: { formatter: p => `◆ ${p.value[2]}` } },
       // 对比虚线:只画 P50,不画烟。数据异步补进来(按 id 合并)。
       { id: 'cmp', name: cmpName, type: 'line', data: [], showSymbol: false, z: 3,
-        lineStyle: { color: cssv('--dim'), width: 1.3, type: 'dashed', opacity: 0.9 },
-        itemStyle: { color: cssv('--dim') } }
+        lineStyle: { color: cmpColor, width: 1.3, type: 'dashed' },
+        itemStyle: { color: cmpColor } }
     ]
   }, true);
   cmpData = null;
 
   const cmp = await cmpP;
-  if (seq !== renderSeq || !cmp || cmp.mode !== cmpMode) return; // 过期 / 失败 / 已切换:主图照旧
+  if (seq !== renderSeq || !cmp || cmp.mode !== cmpMode) return; // 过期 / 被取代 / 已切换:主图照旧
+  if (cmp.failed) { // 失败或超时:图例不能再挂着"┄ = …",改成一句不可用
+    $('legend').textContent = `${legendBase} · ${T('console.cmpUnavailable')}`;
+    return;
+  }
   if (cmp.empty) { // 有多少画多少;一点都没有就只在图例上说明
     $('legend').textContent += ` (${T('console.cmpNoData')})`;
     return;
   }
   cmpData = cmp;
+  // 对比段比主图高出 3 倍以上时,共用 Y 轴会把主线压成一条底线。Y 轴改按主图定
+  // (最高点 × 1.2 取整),虚线在顶边被裁掉,右上角和图例标出对比段的峰值。
+  const cmpTop = cmp.pts.reduce((m, p) => p[1] > m ? p[1] : m, 0);
+  const clip = mainTop > 0 && cmpTop > mainTop * 3;
+  const opt = { series: [{ id: 'cmp', data: cmp.pts, step: (cmp.hourly && !hourly) ? 'end' : false }] };
+  if (clip) {
+    const peak = `↑ ${cmpTop.toFixed(1)} ms`;
+    opt.yAxis = [{ max: niceCeil(mainTop * 1.2) }];
+    opt.graphic = [{ type: 'text', id: 'cmpClip', right: 48, top: 2, silent: true,
+      style: { text: `┄ ${peak}`, fill: cmpColor, font: '10px monospace' } }];
+    $('legend').textContent += ` (${peak})`;
+  }
   // 当前是原始层而对比段只剩小时汇总时,按桶画阶梯线(桶以起点盖章,值管到下一个桶)
-  chart.setOption({ series: [{ id: 'cmp', data: cmp.pts, step: (cmp.hourly && !hourly) ? 'end' : false }] });
+  chart.setOption(opt);
+}
+// 向上取到 1/2/5 × 10^n,Y 轴顶上的刻度才是个整数
+function niceCeil(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const k of [1, 2, 2.5, 5, 10]) if (v <= k * p) return k * p;
+  return 10 * p;
 }
 
 
@@ -763,6 +804,7 @@ fetch('/api/version').then(r => r.json()).then(d => {
   if (el && d.version) el.textContent = 'v' + String(d.version).replace(/^v/, '');
   const keep = (d.retention_days || 0) * 1440;
   retentionSec = keep * 60;
+  if (d.hot_days > 0) rawKeepSec = d.hot_days * 86400;
   if (syncCmpOptions(curWindow())) render(); // 当前对比模式超出保留期 -> 已退回关闭,重画
   if (keep > 0) {
     document.querySelectorAll('.rng button[data-m]').forEach(b => {
