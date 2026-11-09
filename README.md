@@ -32,6 +32,8 @@ mv pingping-linux-amd64 pingping && chmod +x pingping
 
 ### Export / import targets
 
+> **Unreleased:** on the `main` branch only. The v0.6.2 downloads above do not include it.
+
 In the console, **✎ targets → ⇩ export** downloads the active targets as `pingping-targets-YYYYMMDD.json`; **⇧ import…** (or dropping a file on the panel) shows a preview — what will be added, skipped because the name already exists, or rejected and why — before anything changes. Import only adds: existing targets are never changed or removed, and the whole file is applied in one go or not at all. Export is open to every signed-in account; import is admin-only. The same file works in [fogping](https://github.com/githubflyideas/fogping).
 
 ```json
@@ -47,8 +49,6 @@ In the console, **✎ targets → ⇩ export** downloads the active targets as `
 ```
 
 `type` is `ping` or `tcp`, `port` is for tcp only, `pace` is `fast` / `normal` / `slow`, `interval` (seconds) is optional. Importing makes this host probe every address in the file, so only import lists you trust. Full spec: [docs/targets-format.md](docs/targets-format.md) · JSON Schema: [docs/targets.schema.json](docs/targets.schema.json).
-
-Ready-made lists: see presets/ (coming).
 
 ---
 

@@ -156,6 +156,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 	page := func(name string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Referrer-Policy", "same-origin")
+			w.Header().Set("Content-Security-Policy", pageCSPFor(as.fs, "static/"+name))
 			as.serve(w, r, "static/"+name, "text/html; charset=utf-8")
 		}
 	}
@@ -691,7 +692,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		done(w, t, store.DeactivateTarget(id), "deleted")
 	}))
 
-	return mux
+	return securityHeaders(mux)
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
