@@ -6,6 +6,9 @@ pingping provides long-term network performance monitoring, tracking latency, ji
 
 It runs seamlessly across **Windows**, **Linux**, and **macOS**.
 
+
+<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/550355e8-1c45-4c4f-a667-ee54dc08cac9" />
+
 ![pingping latency graph with an example corporate logo (Acme Networks)](docs/images/pingping-graph.png)
 ![pingping settings: accounts, console port and custom logo](docs/images/pingping-settings.png)
 ![pingping target list](docs/images/pingping-targets.png)
