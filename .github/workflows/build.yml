@@ -13,21 +13,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: '1.24' }
-      - run: go mod tidy
+      # go.sum is committed, so the module graph is pinned: a fresh clone builds
+      # what this commit says and nothing newer. `tidy -diff` fails the run if
+      # go.mod or go.sum drifted from the imports instead of silently fixing it.
+      - run: go mod tidy -diff
+      - run: go mod download
       - run: go vet ./...
       - run: go test -race ./...
-
-      # go.sum is not committed yet, so every run above re-resolves the module
-      # graph from the network and a new release of any transitive dependency can
-      # turn this red with no commit behind it. Publishing the resolved go.sum as
-      # an artifact is how it gets committed: download it, add it, and the two
-      # `go mod tidy` lines in this file become `go mod download`.
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: go-sum
-          path: go.sum
-          if-no-files-found: warn
 
   # The point of ADR 1: every target below is one `go build` with no toolchain to
   # install. If this job ever needs a matrix of containers, the SQLite driver
@@ -51,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: '1.24' }
-      - run: go mod tidy
+      - run: go mod download
       - name: build
         env:
           CGO_ENABLED: '0'
@@ -139,7 +131,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: '1.24' }
-      - run: go mod tidy
+      - run: go mod download
 
       # The output goes into the run summary, not only the log. This job failed
       # for two releases saying nothing but "Process completed with exit code 1",

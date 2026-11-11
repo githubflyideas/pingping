@@ -34,9 +34,8 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "building $v"
 
-      # go.sum is not committed until the first `go mod tidy` runs somewhere with
-      # a reachable module proxy; do it here so a fresh clone still releases.
-      - run: go mod tidy && go build ./... && go test ./...
+      # go.sum is committed; a release builds exactly the pinned module graph.
+      - run: go mod download && go build ./... && go test ./...
 
       # One `go build` per target, no toolchain, no container. If this ever needs
       # more than this, ADR 1 has been undone.
