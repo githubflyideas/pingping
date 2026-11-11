@@ -22,6 +22,10 @@ import (
 //go:embed static
 var staticFS embed.FS
 
+// loginFailDelay is paid by every wrong password before the answer goes out.
+// Tests shorten it.
+var loginFailDelay = time.Second
+
 // sessions are in memory, so a restart logs everyone out. For a single-binary tool
 // that is the right trade: no session table to migrate, no token to leak from disk,
 // and a service restart is rare enough that re-login is not a burden.
@@ -89,6 +93,7 @@ const sessionCookie = "pingping_session"
 
 func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 	sess := newSessions()
+	throttle := newLoginThrottle()
 	mux := http.NewServeMux()
 
 	token := func(r *http.Request) string {
@@ -248,19 +253,33 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 	})
 
 	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
+		// The lockout is per client address, not per account (see
+		// loginthrottle.go), so an attacker can lock out only themselves and never
+		// the operator.
+		key := loginClientKey(r)
+		if wait, ok := throttle.begin(key); !ok {
+			w.Header().Set("Retry-After", retryAfter(wait))
+			jsonErr(w, http.StatusTooManyRequests,
+				fmt.Sprintf("too many failed logins; try again in %s seconds", retryAfter(wait)))
+			return
+		}
 		var body struct{ User, Pass string }
 		if !decodeJSON(w, r, &body) {
+			throttle.release(key)
 			return
 		}
 		role, ok := store.Authenticate(body.User, body.Pass)
 		if !ok {
-			// A fixed delay makes online guessing boring without needing a lockout
-			// that an attacker could use to lock the operator out.
-			time.Sleep(time.Second)
-			log.Printf("console: failed login for %q from %s", body.User, r.RemoteAddr)
+			time.Sleep(loginFailDelay)
+			if lock := throttle.fail(key); lock > 0 {
+				log.Printf("console: failed login for %q from %s; address locked for %v", body.User, r.RemoteAddr, lock)
+			} else {
+				log.Printf("console: failed login for %q from %s", body.User, r.RemoteAddr)
+			}
 			jsonErr(w, http.StatusUnauthorized, "wrong username or password")
 			return
 		}
+		throttle.success(key)
 		setCookie(w, sess.issue(body.User, role), 7*24*3600)
 		writeJSON(w, map[string]bool{"ok": true})
 	})
@@ -623,8 +642,11 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		return n, true
 	}
 	decodeTarget := func(w http.ResponseWriter, r *http.Request) (TargetCfg, bool) {
+		// Strict: an unknown field is a typo ("interval" for "interval_sec"), and
+		// accepting it would create the target with a setting the caller never
+		// asked for, with a 200 that says everything went fine.
 		var t TargetCfg
-		if !decodeJSON(w, r, &t) {
+		if !decodeJSONStrict(w, r, &t, targetFields) {
 			return t, false
 		}
 		if err := normalizeTarget(&t); err != nil {
@@ -696,12 +718,30 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
+	return decodeJSONStrict(w, r, v, "")
+}
+
+// targetFields is what POST and PUT /api/targets accept, for the error that
+// names a field they do not.
+const targetFields = "name, type, host, port, pace, interval_sec"
+
+// decodeJSONStrict is decodeJSON that also refuses fields v does not have, when
+// accepted (the list to quote back in the error) is not empty.
+func decodeJSONStrict(w http.ResponseWriter, r *http.Request, v any, accepted string) bool {
 	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt != "application/json" {
 		jsonErr(w, http.StatusUnsupportedMediaType, "Content-Type must be application/json")
 		return false
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(v); err != nil {
-		jsonErr(w, http.StatusBadRequest, "bad JSON: "+err.Error())
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10))
+	if accepted != "" {
+		dec.DisallowUnknownFields()
+	}
+	if err := dec.Decode(v); err != nil {
+		msg := "bad JSON: " + err.Error()
+		if f, ok := strings.CutPrefix(err.Error(), "json: unknown field "); ok && accepted != "" {
+			msg = "unknown field " + f + "; accepted fields: " + accepted
+		}
+		jsonErr(w, http.StatusBadRequest, msg)
 		return false
 	}
 	return true
