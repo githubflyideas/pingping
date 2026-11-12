@@ -48,9 +48,15 @@
     '.spc-slide{position:absolute;inset:0;opacity:0;transition:opacity .45s ease;pointer-events:none;display:block}' +
     '.spc-slide.on{opacity:1;pointer-events:auto}' +
     '.spc-slide img{width:100%;height:100%;object-fit:cover;display:block}' +
-    '.spc-dots{position:absolute;right:5px;top:4px;display:flex;gap:4px;padding:2px 4px;border-radius:6px;background:rgba(0,0,0,.35)}' +
-    '.spc-dot{width:5px;height:5px;padding:0;border-radius:50%;border:0;cursor:pointer;background:rgba(255,255,255,.55)}' +
-    '.spc-dot.on{background:#fff}';
+    // Each dot is a 24x24 button (WCAG 2.5.8 target size) that draws the same
+    // 5px dot in its centre, so the slot looks as before but is easy to hit.
+    '.spc-dots{position:absolute;right:0;top:0;display:flex;padding:0 2px}' +
+    '.spc-dot{width:24px;height:24px;padding:0;border:0;border-radius:50%;cursor:pointer;background:none;' +
+      'display:flex;align-items:center;justify-content:center}' +
+    '.spc-dot::before{content:"";width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.55);' +
+      'box-shadow:0 0 0 2px rgba(0,0,0,.35)}' +
+    '.spc-dot.on::before{background:#fff}' +
+    '.spc-dot:focus-visible{outline:2px solid #fff;outline-offset:-4px}';
 
   // Header placement: centred in the gap between the title block and the
   // controls when it fits (dropping the tagline if that is what it takes),
