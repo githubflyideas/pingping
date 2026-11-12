@@ -1,6 +1,6 @@
 module github.com/githubflyideas/pingping
 
-go 1.24
+go 1.27.4
 
 require (
 	golang.org/x/sys v0.30.0
