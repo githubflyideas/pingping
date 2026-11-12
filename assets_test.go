@@ -187,8 +187,11 @@ func TestVersionReportsHotDays(t *testing.T) {
 	}
 	defer s.Close()
 	h := newMux(&Config{HotDays: 3, RetentionDays: 300}, s, NewRunner(ProbeCfg{}, s, NewDetector(s)))
+	cookie := versionTestSession(t, h)
+	req := httptest.NewRequest("GET", "/api/version", nil)
+	req.Header.Set("Cookie", sessionCookie+"="+cookie)
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest("GET", "/api/version", nil))
+	h.ServeHTTP(rec, req)
 	if rec.Code != 200 {
 		t.Fatalf("GET /api/version: status %d", rec.Code)
 	}
@@ -202,4 +205,51 @@ func TestVersionReportsHotDays(t *testing.T) {
 	if v.HotDays != 3 || v.RetentionDays != 300 {
 		t.Errorf("hot_days=%d retention_days=%d, want 3 and 300", v.HotDays, v.RetentionDays)
 	}
+}
+
+// Before sign-in /api/version says which version this is and nothing about the
+// instance: retention, hot days, logo and setup state are for signed-in users.
+func TestVersionAnonymousShowsOnlyVersion(t *testing.T) {
+	s, err := NewStore(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	h := newMux(&Config{HotDays: 3, RetentionDays: 300}, s, NewRunner(ProbeCfg{}, s, NewDetector(s)))
+	check := func(label string) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest("GET", "/api/version", nil))
+		if rec.Code != 200 {
+			t.Fatalf("%s: GET /api/version: status %d", label, rec.Code)
+		}
+		var v map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &v); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := v["version"]; !ok || len(v) != 1 {
+			t.Errorf("%s: anonymous /api/version = %s, want only the version", label, rec.Body)
+		}
+	}
+	check("before setup")
+	versionTestSession(t, h)
+	check("after setup")
+}
+
+// versionTestSession creates the first admin through /api/setup and returns its
+// session cookie value.
+func versionTestSession(t *testing.T, h http.Handler) string {
+	t.Helper()
+	req := httptest.NewRequest("POST", "http://st.local/api/setup", strings.NewReader(`{"User":"admin","Pass":"correct horse battery"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://st.local")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == sessionCookie {
+			return c.Value
+		}
+	}
+	t.Fatalf("setup gave no session: %d %s", rec.Code, rec.Body)
+	return ""
 }

@@ -565,6 +565,14 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 	})
 
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
+		// Anonymous callers get the version and nothing else: retention, whether a
+		// logo is set and whether setup is still pending describe the instance, and
+		// nothing before sign-in reads them (the console only loads once signed in,
+		// and the first-run redirect is decided server-side).
+		if !authed(r) {
+			writeJSON(w, map[string]any{"version": version})
+			return
+		}
 		writeJSON(w, map[string]any{
 			"version":        version,
 			"retention_days": cfg.RetentionDays,

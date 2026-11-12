@@ -3,14 +3,14 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="data:,"><title>Settings — pingping</title>
 <style>
-:root{color-scheme:dark;--bg:#0e1116;--card:#161b22;--line:#272e38;--fg:#e6edf3;
+:root {color-scheme:dark;--bg:#0e1116;--card:#161b22;--line:#272e38; --ctl:#626972;--fg:#e6edf3;
  --dim:#8b949e;--acc:#3fb950;--err:#f85149;--warn:#d29922}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);
  font:14px/1.55 -apple-system,"Segoe UI",system-ui,sans-serif}
-header{display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 header .mark{font:600 18px ui-monospace,Consolas,monospace;letter-spacing:.5px}
-header a{color:var(--dim);text-decoration:none;font-size:13px}
+header a{color:var(--dim);text-decoration:none;font-size:13px;display:inline-flex;align-items:center;min-height:24px}
 header a:hover{color:var(--fg)}
 header .sp{flex:1}
 main{max-width:860px;margin:0 auto;padding:24px 24px 64px}
@@ -19,7 +19,7 @@ section{background:var(--card);border:1px solid var(--line);border-radius:10px;
 h2{margin:0 0 4px;font-size:15px;font-weight:600}
 h2+p.sub{margin:0 0 18px;color:var(--dim);font-size:13px}
 label{display:block;margin:12px 0 5px;font-size:12px;color:var(--dim)}
-input,select{padding:8px 10px;background:#0e1116;border:1px solid var(--line);
+input,select{padding:8px 10px;background:#0e1116;border:1px solid var(--ctl);
  border-radius:6px;color:var(--fg);font:inherit;min-width:0}
 input:focus,select:focus{outline:none;border-color:var(--acc)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
@@ -43,7 +43,10 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0;font-size:1
 dt{color:var(--dim)} dd{margin:0;font-family:ui-monospace,Consolas,monospace;word-break:break-all}
 .hide{display:none}
 
-.lang-picker{background:#161b22;color:#8b949e;border:1px solid #272e38;border-radius:6px;
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tblwrap{overflow-x:auto}
+dd a{display:inline-flex;align-items:center;min-height:24px}
+.lang-picker{background:#161b22;color:#8b949e;border:1px solid var(--ctl);border-radius:6px;
  padding:5px 8px;font:inherit;font-size:12px;cursor:pointer}
 .lang-picker:focus{outline:none;border-color:#3fb950}
 .lang-picker option{background:#161b22;color:#e6edf3}
@@ -57,7 +60,7 @@ dt{color:var(--dim)} dd{margin:0;font-family:ui-monospace,Consolas,monospace;wor
   .brandprev img { max-width:100%; max-height:100%; }
 </style></head><body>
 <header>
-  <div class="mark">pingping</div>
+  <h1 class="mark" style="margin:0">pingping</h1>
   <a href="/" data-i18n="settings.back">&larr; back to the graph</a>
   <div class="sp"></div>
   <span id="whoami" style="color:var(--dim);font-size:13px"></span>
@@ -75,14 +78,14 @@ dt{color:var(--dim)} dd{margin:0;font-family:ui-monospace,Consolas,monospace;wor
       <div><label for="pwNew2" data-i18n="settings.pwConfirm">Confirm</label><input id="pwNew2" type="password" autocomplete="new-password"></div>
       <button id="pwGo" data-i18n="settings.pwGo">Change</button>
     </div>
-    <div class="msg" id="pwMsg"></div>
+    <div class="msg" id="pwMsg" role="status"></div>
   </section>
 
   <section id="secUsers" class="hide">
     <h2 data-i18n="settings.usersTitle">Accounts</h2>
     <p class="sub" data-i18n="settings.usersSub">An admin can add and edit targets. A viewer can only look at graphs.</p>
-    <table><thead><tr><th data-i18n="settings.colName">Name</th><th data-i18n="settings.colRole">Role</th><th style="width:1%"></th></tr></thead>
-      <tbody id="userRows"></tbody></table>
+    <div class="tblwrap"><table><thead><tr><th data-i18n="settings.colName">Name</th><th data-i18n="settings.colRole">Role</th><th style="width:1%"></th></tr></thead>
+      <tbody id="userRows"></tbody></table></div>
     <div class="row" style="margin-top:16px">
       <div><label for="nuName" data-i18n="settings.newAccount">New account</label><input id="nuName" placeholder="username"></div>
       <div><label for="nuPass" data-i18n="setup.password">Password</label><input id="nuPass" type="password" placeholder="at least 8 characters" data-i18n-ph="settings.passwordPh"></div>
@@ -90,7 +93,7 @@ dt{color:var(--dim)} dd{margin:0;font-family:ui-monospace,Consolas,monospace;wor
         <select id="nuRole"><option value="viewer">viewer</option><option value="admin">admin</option></select></div>
       <button id="nuGo" data-i18n="settings.add">Add</button>
     </div>
-    <div class="msg" id="uMsg"></div>
+    <div class="msg" id="uMsg" role="status"></div>
   </section>
 
   <section id="secPort" class="hide">
@@ -104,7 +107,7 @@ dt{color:var(--dim)} dd{margin:0;font-family:ui-monospace,Consolas,monospace;wor
     </div>
     <p class="sub" data-i18n="settings.bindHelp">127.0.0.1 keeps the console on this machine — nobody else can open it. 0.0.0.0 opens it to everyone who can reach this host; set a password first, and only on a network you trust.</p>
     <p class="sub" id="bindNow"></p>
-    <div class="msg" id="portMsg"></div>
+    <div class="msg" id="portMsg" role="status"></div>
   </section>
 
   <section id="secBrand" class="hide">
@@ -127,7 +130,7 @@ dt{color:var(--dim)} dd{margin:0;font-family:ui-monospace,Consolas,monospace;wor
     </div>
     <p class="sub" data-i18n="settings.brandDrop">Drag an image here, or paste one, or choose a file.</p>
     <p class="sub" data-i18n="settings.brandFormats">PNG, JPEG, GIF or WebP, up to 256 KB. SVG is not accepted because it can carry script.</p>
-    <p class="msg" id="brandMsg"></p>
+    <p class="msg" id="brandMsg" role="status"></p>
   </section>
 
   <section>
@@ -212,6 +215,7 @@ async function loadUsers() {
 
     const tdRole = document.createElement('td');
     const sel = document.createElement('select');
+    sel.setAttribute('aria-label', T('settings.colRole') + ': ' + u.name);
     for (const r of ['admin', 'viewer']) {
       const o = document.createElement('option');
       o.value = r; o.textContent = r; o.selected = u.role === r;
