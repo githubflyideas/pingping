@@ -19,8 +19,7 @@ release notes of the version that fixes them, with credit if you want it.
 
 - pingping does not terminate TLS. Put it behind a reverse proxy with TLS, or bind
   it to localhost, when it is reachable beyond a trusted network.
-- Release archives carry SHA-256 checksums (`SHA256SUMS.txt`); they are not
-  signed yet.
+- Release archives carry SHA-256 checksums (`SHA256SUMS.txt`).
 - Dependencies and the Go toolchain are checked with `govulncheck` on every
   push and weekly.
 - The console's sponsor slot is the only outbound request besides the probes;
