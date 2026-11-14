@@ -19,8 +19,11 @@ release notes of the version that fixes them, with credit if you want it.
 
 - pingping does not terminate TLS. Put it behind a reverse proxy with TLS, or bind
   it to localhost, when it is reachable beyond a trusted network.
-- Release archives carry SHA-256 checksums (`SHA256SUMS.txt`); they are not
-  signed yet.
+- Every release file has signed build provenance (Sigstore, via GitHub
+  artifact attestations) and an SPDX SBOM (`*.sbom.json`). To check that a
+  download was built by this repository's release workflow:
+  `gh attestation verify <file> -R githubflyideas/pingping`. `SHA256SUMS.txt` lists
+  SHA-256 sums for everything, SBOMs included.
 - Dependencies and the Go toolchain are checked with `govulncheck` on every
   push and weekly.
 - The console's sponsor slot is the only outbound request besides the probes;
