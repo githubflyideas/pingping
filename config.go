@@ -21,6 +21,7 @@ import (
 const licenceName = "Elastic License 2.0"
 
 type Config struct {
+	NoSponsor     bool // --no-sponsor: no outbound request for the sponsor slot
 	Listen        string
 	DataDir       string
 	Probe         ProbeCfg

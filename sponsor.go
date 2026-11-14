@@ -51,8 +51,9 @@ type sponsorSlide struct {
 }
 
 type sponsorManifest struct {
-	Version json.RawMessage `json:"version,omitempty"`
-	Slides  []sponsorSlide  `json:"slides"`
+	Version  json.RawMessage `json:"version,omitempty"`
+	Disabled bool            `json:"disabled,omitempty"`
+	Slides   []sponsorSlide  `json:"slides"`
 }
 
 type sponsorImage struct {
@@ -78,6 +79,10 @@ type sponsorCache struct {
 // sponsor is set by main before the web server starts. A nil cache (tests,
 // or a data directory we could not use) serves 404 and the page falls back.
 var sponsor *sponsorCache
+
+// sponsorOff is --no-sponsor: the cache never fetches, and the manifest tells the
+// browser not to fall back to GitHub either.
+var sponsorOff bool
 
 func newSponsorCache(product, dataDir string) *sponsorCache {
 	c := &sponsorCache{
@@ -341,8 +346,8 @@ func registerSponsor(mux *http.ServeMux, wrap func(http.HandlerFunc) http.Handle
 }
 
 func (c *sponsorCache) serveManifest(w http.ResponseWriter, r *http.Request) {
-	out := sponsorManifest{Slides: []sponsorSlide{}}
-	if c != nil {
+	out := sponsorManifest{Slides: []sponsorSlide{}, Disabled: sponsorOff}
+	if c != nil && !sponsorOff {
 		c.mu.RLock()
 		for i, s := range c.slides {
 			s.Image = "/sponsor/img/" + strconv.Itoa(i) + "?v=" + c.imgs[i].tag

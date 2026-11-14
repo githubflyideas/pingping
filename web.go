@@ -480,8 +480,13 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 	// because the tray has no session and cannot get one — so it is restricted to
 	// loopback and carries counts only. No hostnames: the list of what a machine
 	// watches is a map of the network, and that stays behind the login.
+	//
+	// A request a reverse proxy forwarded also arrives from loopback, and would
+	// hand these counts to anyone the proxy serves. The tray talks to the port
+	// directly and never sends forwarding headers, so their presence means the
+	// request came from somewhere else.
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-		if !isLoopback(r) {
+		if !isLoopback(r) || forwarded(r) {
 			http.NotFound(w, r)
 			return
 		}
@@ -794,6 +799,16 @@ func portNum(listen string) int {
 
 // isLoopback reports whether the request came from this machine. Used only to
 // scope the unauthenticated health endpoint; everything else goes through auth.
+// forwarded reports whether a proxy relayed the request on someone's behalf.
+func forwarded(r *http.Request) bool {
+	for _, h := range []string{"Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Real-Ip"} {
+		if r.Header.Get(h) != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func isLoopback(r *http.Request) bool {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

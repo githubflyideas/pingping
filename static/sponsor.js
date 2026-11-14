@@ -13,6 +13,7 @@
   'use strict';
   var BASE = 'https://raw.githubusercontent.com/githubflyideas/ads-sponsor/main/';
   var TIMEOUT_MS = 3000, ROTATE_MS = 5500, MAX = 4;
+  var off = false; // the server runs with --no-sponsor: do not ask GitHub either
 
   function httpURL(v, base, httpsOnly) {
     if (typeof v !== 'string' || !v.trim()) return null;
@@ -156,6 +157,7 @@
       .then(function (r) { if (!r.ok) throw 0; return r.json(); })
       .then(function (m) {
         clearTimeout(timer);
+        if (local && m && m.disabled === true) { off = true; return []; }
         var base = new URL(url, location.href).href;
         var list = m && Array.isArray(m.slides) ? m.slides : [];
         var want = [];
@@ -197,7 +199,7 @@
     if (!/^[a-z0-9-]+$/.test(product) || !window.fetch || !window.URL) return;
     tryManifest('/sponsor/sponsors.json', true)
       .then(function (ok) {
-        return ok.length ? ok : tryManifest(BASE + product + '/sponsors.json', false);
+        return ok.length || off ? ok : tryManifest(BASE + product + '/sponsors.json', false);
       })
       .then(function (ok) { if (ok.length) build(slot, ok); })
       .catch(function () { /* keep the built-in text */ });
