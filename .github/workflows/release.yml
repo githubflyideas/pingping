@@ -146,32 +146,13 @@ jobs:
     needs: [build, installer]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write      # Sigstore signing for the build provenance
-      attestations: write  # store it with the repository
     steps:
       - uses: actions/download-artifact@v4
         with: { path: art }
-      - uses: anchore/sbom-action/download-syft@v0
-      # One SPDX SBOM per binary. The installer and the portable .zip carry the
-      # same windows .exe, so its SBOM covers them.
       - run: |
           mkdir -p out && find art -type f \( -name '*.exe' -o -name '*.zip' -o -name 'pingping-*' \) -exec cp {} out/ \;
-          cd out
-          for f in pingping-*; do
-            case "$f" in *-setup.exe|*.zip) continue ;; esac
-            syft scan "file:$f" -q -o "spdx-json=$f.sbom.json"
-          done
-          sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+          cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           files: out/*
           generate_release_notes: true
-      # Signed build provenance for every published file: proves it was built
-      # by this workflow from this repository at this tag. Verify with
-      #   gh attestation verify <file> -R githubflyideas/pingping
-      # Runs after publishing, so a failure here cannot hold a release back.
-      - uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: out/*
