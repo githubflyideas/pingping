@@ -15,15 +15,14 @@ import (
 // Every response says it must not be framed (X-Frame-Options plus CSP
 // frame-ancestors) and must not be MIME-sniffed. The console is never meant to
 // be embedded in another page. Handlers that set a stricter policy of their own
-// (the custom logo and sponsor images: "default-src 'none'; sandbox") replace
+// (the custom logo image: "default-src 'none'; sandbox") replace
 // the default one, which is what they want.
 //
 // The console pages get a full Content-Security-Policy. Their inline <script>
 // blocks are allowed by SHA-256 hash, computed from the embedded file itself,
 // so editing a page never leaves a stale hash behind. Inline styles stay
 // allowed: the pages use style="" attributes and ECharts writes inline styles.
-// The sponsor slot may fall back to a manifest on raw.githubusercontent.com
-// whose images live on any https host, hence connect-src and img-src below.
+// Nothing on a page loads from outside: images and connections are same-origin.
 
 const frameOnlyCSP = "frame-ancestors 'none'"
 
@@ -58,8 +57,8 @@ func pageCSP(page []byte) string {
 		"default-src 'self'",
 		"script-src " + strings.Join(script, " "),
 		"style-src 'self' 'unsafe-inline'",
-		"img-src 'self' data: https:",
-		"connect-src 'self' https://raw.githubusercontent.com",
+		"img-src 'self' data:",
+		"connect-src 'self'",
 		"object-src 'none'",
 		"base-uri 'none'",
 		"form-action 'self'",

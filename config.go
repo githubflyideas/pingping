@@ -21,7 +21,6 @@ import (
 const licenceName = "Elastic License 2.0"
 
 type Config struct {
-	NoSponsor     bool   // --no-sponsor: no outbound request for the sponsor slot
 	ZabbixToken   string // --zabbix: non-empty turns on GET /api/stats (stats.go)
 	Listen        string
 	DataDir       string

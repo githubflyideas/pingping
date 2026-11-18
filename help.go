@@ -33,7 +33,6 @@ FLAGS
   --localhost      {{LOCALHOSTDESC}}
   --days N         days of history to keep (default 300)
   --data DIR       where the database lives (see DATA below)
-  --no-sponsor     never fetch the console's sponsor slot (see OUTBOUND below)
   --zabbix         serve read-only stats to the Zabbix template (see ZABBIX below)
 
 FIRST RUN
@@ -51,12 +50,8 @@ ZABBIX
   Zabbix template: github.com/githubflyideas/fogping/tree/main/zabbix
 
 OUTBOUND
-  The only request pingping makes on its own, other than the probes you
-  configure, is for the console's sponsor slot: about once an hour it fetches a
-  small manifest and up to four images from raw.githubusercontent.com
-  (githubflyideas/ads-sponsor) and caches them under the data directory. No data
-  about this machine or its targets is sent. --no-sponsor turns it off, on the
-  server and in the browser; given to install, it applies to the service.
+  pingping makes no requests of its own beyond the probes you configure. There
+  are no advertisements and nothing is fetched from anywhere else.
 
 SELFTEST
     {{EXE}} selftest

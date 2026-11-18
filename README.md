@@ -19,7 +19,7 @@ It runs seamlessly across **Windows**, **Linux**, and **macOS**.
 
 ```bash
 cd /home/
-wget https://github.com/githubflyideas/pingping/releases/download/v0.7.5/pingping-linux-amd64
+wget https://github.com/githubflyideas/pingping/releases/download/v0.7.6/pingping-linux-amd64
 mv pingping-linux-amd64 pingping && chmod +x pingping
 ./pingping --port 8518
 # Open http://localhost:8518
@@ -27,11 +27,11 @@ mv pingping-linux-amd64 pingping && chmod +x pingping
 
 ### Windows
 
-[pingping-0.7.5-setup.exe](https://github.com/githubflyideas/pingping/releases/download/v0.7.5/pingping-0.7.5-setup.exe)
+[pingping-0.7.6-setup.exe](https://github.com/githubflyideas/pingping/releases/download/v0.7.6/pingping-0.7.6-setup.exe)
 
 ### macOS (Apple silicon)
 
-[pingping-darwin-arm64](https://github.com/githubflyideas/pingping/releases/download/v0.7.5/pingping-darwin-arm64)
+[pingping-darwin-arm64](https://github.com/githubflyideas/pingping/releases/download/v0.7.6/pingping-darwin-arm64)
 
 ### Export / import targets
 
@@ -75,9 +75,9 @@ In the console, **✎ targets → ⇩ export** downloads the active targets as `
 
 Off by default. Start with `--zabbix` and a token of 16+ characters in `PINGPING_ZABBIX_TOKEN` (or `PINGPING_ZABBIX_TOKEN_FILE` / `--zabbix-token-file`) and pingping serves a read-only `GET /api/stats`: per target, the last five minutes' p50/p90/p99, loss and loss bursts. It is the same contract as fogping, so the [fogping Zabbix 7.0 template](https://github.com/githubflyideas/fogping/tree/main/zabbix/template_fogping/7.0) works unchanged: set `{$FOGPING.URL}` to `http://<host>:8518`. Without `--zabbix` nothing changes.
 
-### Sponsor slot
+### No ads, no outbound requests
 
-The sponsor box in the web UI shows up to four images from [githubflyideas/ads-sponsor](https://github.com/githubflyideas/ads-sponsor). The program itself fetches them from GitHub about once an hour and caches them in a `sponsor` folder inside its data directory; if that cache is empty, the browser may fetch them from GitHub directly. If neither works, the built-in sponsor text is shown. This is the only outbound request pingping makes besides your probes, and it sends nothing about your machine or targets. To turn it off — server and browser both — start with `--no-sponsor` (or `pingping install --no-sponsor` for the service).
+pingping has no advertising and makes no requests of its own beyond the probes you configure.
 
 ---
 

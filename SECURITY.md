@@ -22,5 +22,5 @@ release notes of the version that fixes them, with credit if you want it.
 - Release archives carry SHA-256 checksums (`SHA256SUMS.txt`).
 - Dependencies and the Go toolchain are checked with `govulncheck` on every
   push and weekly.
-- The console's sponsor slot is the only outbound request besides the probes;
-  `--no-sponsor` turns it off.
+- pingping makes no outbound requests besides the probes you configure, and
+  shows no advertising.

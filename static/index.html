@@ -95,8 +95,8 @@
           display:flex; align-items:center; gap:8px; transition:border-color .12s, color .12s; }
   .pill.on { border-color:var(--phos); color:var(--phos); font-weight:600; }
   /* Account controls belong where a web console puts them — top right, above the
-     fold, in the order a hand reaches for them. They used to sit in the footer
-     promo box, which meant signing out required scrolling past the chart. */
+     fold, in the order a hand reaches for them. They used to sit in the footer,
+     which meant signing out required scrolling past the chart. */
   header > .pill { align-self:center; }
   .hdr-actions { margin-left:auto; align-self:center; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .hdr-actions .pill { text-decoration:none; }
@@ -118,18 +118,6 @@
      body text underneath them. */
   img.brand-ic { width:auto; height:52px; max-width:380px; object-fit:contain; }
   .hide { display:none; }
-  /* Header sponsor slot (234x60). sponsor.js centres it between the title block
-     and the controls when it fits (sp-in), or gives it its own row (sp-row). */
-  .hdr-sp { flex:none; align-self:center; width:234px; height:60px; margin:0 auto; }
-  header.sp-in > .hdr-actions, header.sp-in > .hdr-right { margin-left:0 !important; }
-  header.sp-notag > .tag { display:none; }
-  header.sp-row > .hdr-sp { order:99; flex-basis:100%; width:auto; display:flex; justify-content:center; margin:0; }
-  .hdr-sp-def { box-sizing:border-box; width:234px; height:60px; display:flex; flex-direction:column;
-                justify-content:center; align-items:center; gap:4px; border:1px dashed var(--line);
-                border-radius:6px; background:var(--panel); color:var(--ink); text-decoration:none;
-                font-family:var(--sans); font-size:var(--fs-small); }
-  .hdr-sp-def:hover { border-color:var(--phos); color:var(--phos); }
-  .hdr-sp-def small { font-size:var(--fs-micro); font-weight:700; letter-spacing:.16em; color:var(--dim); }
   .rng { display:flex; background:var(--panel); border:1px solid var(--line); border-radius:4px; overflow:hidden; }
   .rng span { color:var(--dim); font-family:var(--sans); font-size:var(--fs-micro);
               font-weight:600; padding:9px 10px 0 12px; letter-spacing:.14em; }
@@ -165,23 +153,16 @@
   #conclusion { color:var(--ink); font-family:var(--mono); font-weight:600;
                 font-size:var(--fs-body); }
   .legend { color:var(--dim); font-family:var(--sans); font-size:var(--fs-small); }
-  .promos { margin-top:16px; }
-  .promo { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
+  .site-foot { margin-top:16px; }
+  .foot-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
            box-shadow:var(--shadow); text-decoration:none; display:block; }
-  .promo.sponsor { border-style:dashed; }
-  .promo.sponsor:hover { border-color:var(--phos); }
-  .promo-h { font-family:var(--sans); font-size:var(--fs-micro); font-weight:700;
+  .foot-name { font-family:var(--sans); font-size:var(--fs-micro); font-weight:700;
              letter-spacing:.16em; color:var(--dim); margin-bottom:7px; text-transform:uppercase; }
-  .promo-b { color:var(--ink); font-size:var(--fs-body); display:flex; gap:16px;
+  .foot-body { color:var(--ink); font-size:var(--fs-body); display:flex; gap:16px;
              align-items:center; justify-content:space-between; flex-wrap:wrap; }
-  .promo-b a { color:var(--phos); text-decoration:none; font-weight:600; white-space:nowrap; }
-  .promo-b a:hover { text-decoration:underline; }
-  .promo-h #ver { color:var(--phos); font-family:var(--mono); letter-spacing:0; font-weight:600; }
-  .share .promo-b { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-  .share a { color:var(--phos); text-decoration:none; font-weight:600; }
-  .share a:hover { text-decoration:underline; }
-  .share-links { display:flex; gap:12px; }
-  .share-links a { color:var(--dim); font-weight:500; }
+  .foot-body a { color:var(--phos); text-decoration:none; font-weight:600; white-space:nowrap; }
+  .foot-body a:hover { text-decoration:underline; }
+  .foot-name #ver { color:var(--phos); font-family:var(--mono); letter-spacing:0; font-weight:600; }
   /* Target editor — only rendered when the server runs with --edit. */
   .tgt { margin-bottom:14px; }
   .tgt table { width:100%; border-collapse:collapse; font-size:var(--fs-body); }
@@ -230,8 +211,8 @@
   #main:focus { outline:none; }
   .rng { flex-wrap:wrap; max-width:100%; }
   .rng.cmp, .rng.custom { border-color:var(--ctl); }
-  .promo-b a, .share a, .tgt .lnk { display:inline-flex; align-items:center; min-height:24px; }
-  .promo-b > span { flex-wrap:wrap; max-width:100%; }
+  .foot-body a, .tgt .lnk { display:inline-flex; align-items:center; min-height:24px; }
+  .foot-body > span { flex-wrap:wrap; max-width:100%; }
 
 /* The browser's default datetime-local chrome is a white box, which reads as a
    rendering fault in a dark console. color-scheme makes the native picker and the
@@ -281,7 +262,6 @@ html[data-theme="budapest"] input[type="datetime-local"]{ color-scheme:light; }
        the right. Mixed in there it read as one more setting. -->
   <button class="pill" id="editBtn" title="add, edit or remove targets" style="display:none" data-i18n="console.targets">✎ targets</button>
   <a class="pill" id="exportPill" href="/api/targets/export" download style="display:none;text-decoration:none" title="Download the active targets as a JSON file" data-i18n="console.exportTargets" data-i18n-title="console.exportTitle">⇩ targets</a>
-  <div class="hdr-sp" id="sponsorTop"><a class="hdr-sp-def" href="https://github.com/githubflyideas/ads-sponsor" target="_blank" rel="noopener"><small>SPONSOR</small><span>Sponsor slot — your ad here</span></a></div>
   <div class="hdr-actions">
     <button class="pill" id="themeBtn" title="switch theme">◐ <span id="themeName">dark</span></button>
     <span data-i18n-picker></span>
@@ -399,10 +379,10 @@ html[data-theme="budapest"] input[type="datetime-local"]{ color-scheme:light; }
   <span class="legend" id="legend"><span data-i18n="console.legend">Line = per-round median · Smoke = all samples · Red bars = loss% · ◆ = burst</span></span>
 </footer>
 
-<div class="promos">
-  <div class="promo">
-    <div class="promo-b">
-      <span class="promo-h" style="margin:0">pingping <span id="ver"></span></span>
+<div class="site-foot">
+  <div class="foot-card">
+    <div class="foot-body">
+      <span class="foot-name" style="margin:0">pingping <span id="ver"></span></span>
       <span style="display:flex; gap:16px; align-items:center;">
         <a href="https://github.com/githubflyideas/pingping" target="_blank" rel="noopener">pingping on GitHub</a>
       </span>
@@ -1101,7 +1081,5 @@ document.getElementById('logoutBtn')?.addEventListener('click', async e => {
   location.href = '/login';
 });
 </script>
-<script src="/static/sponsor.js"></script>
-<script>loadSponsor('pingping');</script>
 </body>
 </html>

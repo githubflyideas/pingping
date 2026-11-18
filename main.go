@@ -23,7 +23,6 @@ type options struct {
 	days      int
 	data      string
 	port      int
-	noSponsor bool
 	zabbix    bool     // --zabbix: read-only GET /api/stats for the Zabbix template
 	zabbixTok string   // --zabbix-token-file
 	logFile   string   // set only on the elevated re-launch; see elevate_windows.go
@@ -126,7 +125,6 @@ func parseOptions(args []string) (options, error) {
 	port := fs.Int("port", 0, "console port (default 8518)")
 	logFile := fs.String("log-file", "", "") // internal: the elevated child writes here
 	showVer := fs.Bool("version", false, "print version")
-	noSponsor := fs.Bool("no-sponsor", false, "never fetch the sponsor slot")
 	zabbix := fs.Bool("zabbix", false, "serve read-only stats for the Zabbix template")
 	zabbixTok := fs.String("zabbix-token-file", "", "file holding the Zabbix token")
 
@@ -142,7 +140,6 @@ func parseOptions(args []string) (options, error) {
 	}
 	opt.localOnly, opt.days, opt.data, opt.port = *localOnly, *days, *data, *port
 	opt.logFile = *logFile
-	opt.noSponsor = *noSponsor
 	opt.zabbix, opt.zabbixTok = *zabbix, *zabbixTok
 	return opt, nil
 }
@@ -163,7 +160,6 @@ func configure(opt options) (*Config, bool, error) {
 	if opt.localOnly {
 		cfg.Listen = "127.0.0.1" + portOf(cfg.Listen)
 	}
-	cfg.NoSponsor = opt.noSponsor
 	tok, ignored, err := resolveZabbixToken(opt.zabbix, opt.zabbixTok, os.Getenv)
 	if err != nil {
 		return nil, false, err
