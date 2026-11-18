@@ -20,7 +20,7 @@ release notes of the version that fixes them, with credit if you want it.
 - pingping does not terminate TLS. Put it behind a reverse proxy with TLS, or bind
   it to localhost, when it is reachable beyond a trusted network.
 - Release archives carry SHA-256 checksums (`SHA256SUMS.txt`).
-- Dependencies and the Go toolchain are checked with `govulncheck` on every
-  push and weekly.
+- Dependencies and the Go toolchain are checked with `govulncheck`, and the code
+  with `staticcheck`, on every push; `govulncheck` also runs weekly.
 - pingping makes no outbound requests besides the probes you configure, and
   shows no advertising.
