@@ -34,6 +34,7 @@ FLAGS
   --days N         days of history to keep (default 300)
   --data DIR       where the database lives (see DATA below)
   --no-sponsor     never fetch the console's sponsor slot (see OUTBOUND below)
+  --zabbix         serve read-only stats to the Zabbix template (see ZABBIX below)
 
 FIRST RUN
   There is no password on the command line and no config file to edit. Start it,
@@ -41,6 +42,13 @@ FIRST RUN
   Everything after that — targets, pacing, the password itself — is changed in the
   console. A service command line is readable by every account on the machine, so
   a credential does not belong there.
+
+ZABBIX
+  Optional and off by default. --zabbix with a token of 16+ characters in
+  PINGPING_ZABBIX_TOKEN (or PINGPING_ZABBIX_TOKEN_FILE, --zabbix-token-file F)
+  serves GET /api/stats: per target, the last 5 minutes' p50/p90/p99, loss and
+  loss bursts. Read-only, no hosts or raw samples. Use it with the fogping
+  Zabbix template: github.com/githubflyideas/fogping/tree/main/zabbix
 
 OUTBOUND
   The only request pingping makes on its own, other than the probes you

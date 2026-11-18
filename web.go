@@ -727,6 +727,8 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		done(w, t, store.DeactivateTarget(id), "deleted")
 	}))
 
+	registerStats(mux, cfg.ZabbixToken, store, run)
+
 	return securityHeaders(mux)
 }
 

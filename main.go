@@ -24,6 +24,8 @@ type options struct {
 	data      string
 	port      int
 	noSponsor bool
+	zabbix    bool     // --zabbix: read-only GET /api/stats for the Zabbix template
+	zabbixTok string   // --zabbix-token-file
 	logFile   string   // set only on the elevated re-launch; see elevate_windows.go
 	rawArgs   []string // as given, for install to replay
 }
@@ -125,6 +127,8 @@ func parseOptions(args []string) (options, error) {
 	logFile := fs.String("log-file", "", "") // internal: the elevated child writes here
 	showVer := fs.Bool("version", false, "print version")
 	noSponsor := fs.Bool("no-sponsor", false, "never fetch the sponsor slot")
+	zabbix := fs.Bool("zabbix", false, "serve read-only stats for the Zabbix template")
+	zabbixTok := fs.String("zabbix-token-file", "", "file holding the Zabbix token")
 
 	if err := fs.Parse(args); err != nil {
 		return opt, err
@@ -139,6 +143,7 @@ func parseOptions(args []string) (options, error) {
 	opt.localOnly, opt.days, opt.data, opt.port = *localOnly, *days, *data, *port
 	opt.logFile = *logFile
 	opt.noSponsor = *noSponsor
+	opt.zabbix, opt.zabbixTok = *zabbix, *zabbixTok
 	return opt, nil
 }
 
@@ -159,6 +164,18 @@ func configure(opt options) (*Config, bool, error) {
 		cfg.Listen = "127.0.0.1" + portOf(cfg.Listen)
 	}
 	cfg.NoSponsor = opt.noSponsor
+	tok, ignored, err := resolveZabbixToken(opt.zabbix, opt.zabbixTok, os.Getenv)
+	if err != nil {
+		return nil, false, err
+	}
+	os.Unsetenv("PINGPING_ZABBIX_TOKEN")
+	cfg.ZabbixToken = tok
+	if ignored {
+		log.Printf("note: a Zabbix token is set but --zabbix was not given; the Zabbix stats API stays off")
+	}
+	if tok != "" {
+		log.Printf("zabbix: on — read-only GET /api/stats for the Zabbix template")
+	}
 	dir, portable := resolveDataDir(opt.data)
 	cfg.DataDir = dir
 	return cfg, portable, nil

@@ -71,6 +71,10 @@ In the console, **✎ targets → ⇩ export** downloads the active targets as `
 
 ---
 
+### Zabbix (optional)
+
+Off by default. Start with `--zabbix` and a token of 16+ characters in `PINGPING_ZABBIX_TOKEN` (or `PINGPING_ZABBIX_TOKEN_FILE` / `--zabbix-token-file`) and pingping serves a read-only `GET /api/stats`: per target, the last five minutes' p50/p90/p99, loss and loss bursts. It is the same contract as fogping, so the [fogping Zabbix 7.0 template](https://github.com/githubflyideas/fogping/tree/main/zabbix/template_fogping/7.0) works unchanged: set `{$FOGPING.URL}` to `http://<host>:8518`. Without `--zabbix` nothing changes.
+
 ### Sponsor slot
 
 The sponsor box in the web UI shows up to four images from [githubflyideas/ads-sponsor](https://github.com/githubflyideas/ads-sponsor). The program itself fetches them from GitHub about once an hour and caches them in a `sponsor` folder inside its data directory; if that cache is empty, the browser may fetch them from GitHub directly. If neither works, the built-in sponsor text is shown. This is the only outbound request pingping makes besides your probes, and it sends nothing about your machine or targets. To turn it off — server and browser both — start with `--no-sponsor` (or `pingping install --no-sponsor` for the service).
