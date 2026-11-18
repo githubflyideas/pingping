@@ -53,7 +53,7 @@ $('f').addEventListener('submit',async e=>{
   $('b').disabled=true;$('b').textContent=T('setup.creating');
   try{
     const r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({User:$('u').value,Pass:$('p').value})});
+      body:JSON.stringify({user:$('u').value,pass:$('p').value})});
     if(r.ok){location.href='/';return}
     const j=await r.json().catch(()=>({error:'setup failed'}));
     m.className='msg err';m.textContent=j.error||'Setup failed.';

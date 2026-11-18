@@ -67,7 +67,7 @@ async function login() {
   const res = await fetch('/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ User: $('user').value, Pass: $('pass').value })
+    body: JSON.stringify({ user: $('user').value, pass: $('pass').value })
   });
   if (res.ok) { location.href = '/'; return; }
   // Show what the server actually said. A blanket "wrong password" for every

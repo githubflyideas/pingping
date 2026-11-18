@@ -110,7 +110,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 	guard := func(h http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if !authed(r) {
-				jsonErr(w, http.StatusUnauthorized, "unauthorized")
+				jsonErr(w, http.StatusUnauthorized, "sign in first")
 				return
 			}
 			t0 := time.Now()
@@ -157,11 +157,10 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		}
 	}
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
+	// Pages are bound to GET like every endpoint, so the router itself can tell a
+	// wrong method (405) from a wrong path (404); a catch-all "/" would answer
+	// every request it does not recognise with 404, API calls included.
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		if store.NeedsSetup() {
 			http.Redirect(w, r, "/setup", http.StatusFound)
 			return
@@ -172,21 +171,21 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		}
 		page("index.html")(w, r)
 	})
-	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		if store.NeedsSetup() {
 			http.Redirect(w, r, "/setup", http.StatusFound)
 			return
 		}
 		page("login.html")(w, r)
 	})
-	mux.HandleFunc("/setup", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /setup", func(w http.ResponseWriter, r *http.Request) {
 		if !store.NeedsSetup() {
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 		page("setup.html")(w, r)
 	})
-	mux.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /settings", func(w http.ResponseWriter, r *http.Request) {
 		if store.NeedsSetup() {
 			http.Redirect(w, r, "/setup", http.StatusFound)
 			return
@@ -197,7 +196,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		}
 		page("settings.html")(w, r)
 	})
-	mux.HandleFunc("/static/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /static/", func(w http.ResponseWriter, r *http.Request) {
 		name := assetPath(r.URL.Path)
 		if name == "" || name == "static" {
 			http.NotFound(w, r)
@@ -518,7 +517,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 	mux.HandleFunc("GET /api/brand/logo", guard(func(w http.ResponseWriter, r *http.Request) {
 		raw, ct, ok := store.Logo()
 		if !ok {
-			http.Error(w, "no custom logo", http.StatusNotFound)
+			jsonErr(w, http.StatusNotFound, "no custom logo")
 			return
 		}
 		w.Header().Set("Content-Type", ct)
@@ -560,7 +559,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		writeJSON(w, bundle(lang))
 	})
 
-	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/version", func(w http.ResponseWriter, r *http.Request) {
 		// Anonymous callers get the version and nothing else: retention, whether a
 		// logo is set and whether setup is still pending describe the instance, and
 		// nothing before sign-in reads them (the console only loads once signed in,
@@ -720,7 +719,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 
 	registerStats(mux, cfg.ZabbixToken, store, run)
 
-	return securityHeaders(mux)
+	return securityHeaders(apiRules(mux))
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
@@ -820,15 +819,4 @@ func sameOrigin(r *http.Request) bool {
 	}
 	u, err := url.Parse(o)
 	return err == nil && u.Host == r.Host
-}
-
-func jsonErr(w http.ResponseWriter, code int, msg string) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
-}
-
-func writeJSON(w http.ResponseWriter, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(v)
 }
