@@ -102,9 +102,6 @@ const (
 	evTargetChange = 1100
 	evGeneric      = 1900 // anything routed through the standard logger
 
-	evProbeFailed     = 2000
-	evInstallDegraded = 2100
-
 	evStartupFailed = 3000
 	evConfigInvalid = 3001
 )
@@ -621,6 +618,7 @@ func createWaitingOutDeletion(m *mgr.Mgr, exe string, c mgr.Config, args []strin
 			return nil, fmt.Errorf("create service: %w", err)
 		}
 		if time.Now().After(deadline) {
+			//lint:ignore ST1005 "Windows" is a proper noun; this text is shown to the person installing
 			return nil, fmt.Errorf(
 				"Windows is still removing the previous %s service and will not let "+
 					"a new one be created until it finishes. This usually takes a few "+

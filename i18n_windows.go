@@ -64,3 +64,15 @@ func storeLang(tag string) {
 	defer k.Close()
 	k.SetStringValue("Language", tag)
 }
+
+// langOrder is the offer order shown to a user: English first because it is the
+// fallback, then by the catalogue's own ordering. Only the tray's language menu
+// uses it, so it lives with the Windows code.
+func langOrder() []string { return cat.Langs }
+
+func langName(tag string) string {
+	if n := cat.Names[tag]; n != "" {
+		return n
+	}
+	return tag
+}

@@ -81,14 +81,6 @@ func (s *sessions) drop(tok string) {
 	s.mu.Unlock()
 }
 
-// dropAll invalidates every session — used after a password change, so a stolen
-// cookie does not outlive the password it was issued against.
-func (s *sessions) dropAll() {
-	s.mu.Lock()
-	s.m = map[string]session{}
-	s.mu.Unlock()
-}
-
 const sessionCookie = "pingping_session"
 
 func newMux(cfg *Config, store *Store, run *Runner) http.Handler {

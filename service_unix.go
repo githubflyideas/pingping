@@ -4,8 +4,6 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"log"
 	"os"
 )
 
@@ -31,8 +29,3 @@ func runServiceVerb(verb string, _ options) int {
 func runTrayCompanion(options) int { return 2 }
 
 func startForegroundTray(string, func()) {}
-
-func setLogOutput(w io.Writer) {
-	log.SetOutput(w)
-	log.SetFlags(log.LstdFlags)
-}

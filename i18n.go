@@ -195,17 +195,6 @@ func messages(lang string) msgs {
 	}
 }
 
-// langOrder is the offer order shown to a user: English first because it is the
-// fallback, then by the catalogue's own ordering.
-func langOrder() []string { return cat.Langs }
-
-func langName(tag string) string {
-	if n := cat.Names[tag]; n != "" {
-		return n
-	}
-	return tag
-}
-
 // bundle is what the console fetches: one language, flattened.
 func bundle(lang string) map[string]any {
 	s := map[string]string{}
