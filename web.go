@@ -749,6 +749,11 @@ func decodeJSONStrict(w http.ResponseWriter, r *http.Request, v any, accepted st
 		dec.DisallowUnknownFields()
 	}
 	if err := dec.Decode(v); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			jsonErr(w, http.StatusRequestEntityTooLarge, "request body is too large")
+			return false
+		}
 		msg := "bad JSON: " + err.Error()
 		if f, ok := strings.CutPrefix(err.Error(), "json: unknown field "); ok && accepted != "" {
 			msg = "unknown field " + f + "; accepted fields: " + accepted
