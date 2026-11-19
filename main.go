@@ -162,11 +162,7 @@ func configure(opt options) (*Config, bool, error) {
 	}
 	tok, ignored, err := resolveZabbixToken(opt.zabbix, opt.zabbixTok, os.Getenv)
 	if err != nil {
-		// A mistake in an optional integration must never stop the monitoring
-		// itself. The integration stays off, which is the safe state (no stats
-		// endpoint exists), and the log says why.
-		log.Printf("ERROR: %v\nERROR: the Zabbix stats API is OFF; fix the token and restart to turn it on. pingping carries on without it.", err)
-		tok, ignored = "", false
+		return nil, false, err
 	}
 	os.Unsetenv("PINGPING_ZABBIX_TOKEN")
 	cfg.ZabbixToken = tok
