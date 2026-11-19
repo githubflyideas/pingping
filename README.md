@@ -73,7 +73,9 @@ In the console, **✎ targets → ⇩ export** downloads the active targets as `
 
 ### Zabbix (optional)
 
-Off by default. Start with `--zabbix` and a token of 16+ characters in `PINGPING_ZABBIX_TOKEN` (or `PINGPING_ZABBIX_TOKEN_FILE` / `--zabbix-token-file`) and pingping serves a read-only `GET /api/stats`: per target, the last five minutes' p50/p90/p99, loss and loss bursts. It is the same contract as fogping, so the [fogping Zabbix 7.0 template](https://github.com/githubflyideas/fogping/tree/main/zabbix/template_fogping/7.0) works unchanged: set `{$FOGPING.URL}` to `http://<host>:8518`. Without `--zabbix` nothing changes.
+Off by default. Start with `--zabbix` and a token of 16+ characters in `PINGPING_ZABBIX_TOKEN` (or `PINGPING_ZABBIX_TOKEN_FILE` / `--zabbix-token-file`) and pingping serves a read-only `GET /api/stats`: per target, the last five minutes' p50/p90/p99, loss and loss bursts. It is the same contract as fogping, so the [fogping Zabbix 7.0 template](https://github.com/githubflyideas/fogping/tree/main/zabbix/template_fogping/7.0) works unchanged: set `{$FOGPING.URL}` to `http://<host>:8518`. Without `--zabbix` nothing changes. `pingping gen-token zabbix.token` makes a strong token in a file only you can read (it is never printed).
+
+**Before restarting a service**, `pingping check` with the same flags says whether it would start and why not (flags, token, data directory, database, port), without touching the running one. Every start logs a short security summary; anything exposed is marked `!`.
 
 ### No ads, no outbound requests
 
