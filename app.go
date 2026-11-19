@@ -175,6 +175,10 @@ func (a *app) banner(portable bool) {
 	}
 	log.Printf("pingping %s up · %d targets · listening on %s · data in %s · %d-day retention",
 		version, len(a.run.Targets()), a.cfg.Listen, where, a.cfg.RetentionDays)
+	log.Printf("security summary (lines marked ! deserve a look):")
+	for _, l := range securitySummary(a.cfg, a.store.UserCount()) {
+		log.Printf("  %s", l)
+	}
 	if a.store.NeedsSetup() {
 		log.Printf("➜  FIRST RUN: open http://localhost%s to set the admin password", portOf(a.cfg.Listen))
 		return

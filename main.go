@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -50,6 +51,23 @@ func main() {
 	case "selftest":
 		runSelftest(os.Stdout)
 		return
+	case "gen-token":
+		if len(args) != 2 {
+			fmt.Fprintln(os.Stderr, "usage: pingping gen-token FILE")
+			os.Exit(2)
+		}
+		if err := genToken(os.Stdout, args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "pingping: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	case "check":
+		opt, err := parseOptions(args[1:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "pingping: %v\nRun 'pingping help' for examples.\n", err)
+			os.Exit(2)
+		}
+		os.Exit(runCheck(os.Stdout, opt))
 	case "run", "install", "uninstall", "tray", "console", "firewall":
 		args = args[1:]
 	case "":
@@ -151,8 +169,11 @@ func configure(opt options) (*Config, bool, error) {
 	if opt.days > 0 {
 		cfg.RetentionDays = opt.days
 	}
+	// Every problem is collected, so a refused start names all of them at once.
+	var problems []error
 	if opt.port < 0 || opt.port > 65535 {
-		return nil, false, fmt.Errorf("--port must be 1-65535")
+		problems = append(problems, fmt.Errorf("--port must be 1-65535"))
+		opt.port = 0
 	}
 	if opt.port > 0 {
 		cfg.Listen = hostOf(cfg.Listen) + ":" + strconv.Itoa(opt.port)
@@ -162,18 +183,18 @@ func configure(opt options) (*Config, bool, error) {
 	}
 	tok, ignored, err := resolveZabbixToken(opt.zabbix, opt.zabbixTok, os.Getenv)
 	if err != nil {
-		return nil, false, err
+		problems = append(problems, err)
 	}
 	os.Unsetenv("PINGPING_ZABBIX_TOKEN")
 	cfg.ZabbixToken = tok
 	if ignored {
 		log.Printf("note: a Zabbix token is set but --zabbix was not given; the Zabbix stats API stays off")
 	}
-	if tok != "" {
-		log.Printf("zabbix: on — read-only GET /api/stats for the Zabbix template")
-	}
 	dir, portable := resolveDataDir(opt.data)
 	cfg.DataDir = dir
+	if len(problems) > 0 {
+		return cfg, portable, errors.Join(problems...)
+	}
 	return cfg, portable, nil
 }
 

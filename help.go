@@ -25,6 +25,9 @@ COMMANDS
   uninstall        {{UNINSTALLDESC}}
   tray             {{TRAYDESC}}
   selftest         measure this machine's clock and scheduler (see below)
+  check [flags]    check flags, token, data directory, database, accounts and port;
+                   print a report and exit without starting anything
+  gen-token FILE   write a new random Zabbix token to FILE (owner-only, never printed)
   version          print the version
   help             this text
 
