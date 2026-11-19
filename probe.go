@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -69,6 +70,17 @@ func probeParams(t TargetCfg, p ProbeCfg) (interval time.Duration, packets int) 
 }
 
 func probeLoop(t TargetCfg, p ProbeCfg, store *Store, det *Detector, stop chan struct{}) {
+	// ctx is cancelled when the target stops, so a probe in flight (an HTTP request
+	// waiting on a slow server) ends at once instead of finishing its round.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-stop:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
 	interval, packets := probeParams(t, p)
 	gap := time.Duration(p.GapMs) * time.Millisecond
 	timeout := time.Duration(p.TimeoutMs) * time.Millisecond
@@ -82,6 +94,16 @@ func probeLoop(t TargetCfg, p ProbeCfg, store *Store, det *Detector, stop chan s
 			r, err = icmpRound(t.Host, packets, gap, timeout)
 		case "tcp":
 			r, err = tcpRound(t.Host, t.Port, packets, gap, timeout)
+		case typeHTTP:
+			r, err = httpRound(ctx, t, packets, gap, timeout)
+		default:
+			// Validation keeps unknown types out of the database. Write nothing
+			// rather than a round that looks like a measurement.
+			log.Printf("[%s] unknown type %q; not probing", t.Name, t.Type)
+			return
+		}
+		if ctx.Err() != nil {
+			return // stopped mid-round: a partial round must not be stored
 		}
 		if err != nil {
 			log.Printf("[%s] probe error: %v", t.Name, err)

@@ -36,11 +36,13 @@ const (
 // accounts or settings.
 type fileTarget struct {
 	Name     string `json:"name,omitempty"`
-	Type     string `json:"type"` // "ping" | "tcp" ("icmp" accepted on import)
+	Type     string `json:"type"` // "ping" | "tcp" | "http" ("icmp" accepted on import)
 	Host     string `json:"host"`
-	Port     int    `json:"port,omitempty"` // tcp only
+	Port     int    `json:"port,omitempty"` // tcp and http
 	Pace     string `json:"pace,omitempty"` // fast | normal | slow
 	Interval int    `json:"interval,omitempty"`
+	// Options are the type's own settings (options.go); today only http has any.
+	Options map[string]any `json:"options,omitempty"`
 }
 
 type targetsFile struct {
@@ -53,8 +55,11 @@ type targetsFile struct {
 
 func toFileTarget(t TargetCfg) fileTarget {
 	f := fileTarget{Name: t.Name, Type: "ping", Host: t.Host, Pace: t.Pace, Interval: t.IntervalSec}
-	if t.Type == "tcp" {
+	switch t.Type {
+	case "tcp":
 		f.Type, f.Port = "tcp", t.Port
+	case typeHTTP:
+		f.Type, f.Port, f.Options = typeHTTP, t.Port, t.Options
 	}
 	if f.Pace == "" {
 		f.Pace = "normal"
@@ -100,12 +105,15 @@ func fromFileRow(raw json.RawMessage) (TargetCfg, string, error) {
 		t.Type = "icmp"
 	case "tcp":
 		t.Type = "tcp"
+	case typeHTTP:
+		t.Type = typeHTTP
 	case "":
-		return t, name, errors.New("type is required (ping|tcp)")
+		return t, name, errors.New("type is required (ping|tcp|http)")
 	default:
-		return t, name, fmt.Errorf("unknown type %q (ping|tcp)", f.Type)
+		return t, name, fmt.Errorf("unknown type %q (ping|tcp|http)", f.Type)
 	}
 	t.Name, t.Host, t.Port, t.Pace, t.IntervalSec = f.Name, f.Host, f.Port, f.Pace, f.Interval
+	t.Options = f.Options
 	if err := normalizeTarget(&t); err != nil {
 		return t, name, err
 	}

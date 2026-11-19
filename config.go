@@ -44,11 +44,14 @@ func defaultConfig() *Config {
 type TargetCfg struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
-	Type        string `json:"type"` // "icmp" (default) | "tcp"
+	Type        string `json:"type"` // "icmp" (default) | "tcp" | "http"
 	Host        string `json:"host"`
 	Port        int    `json:"port"`         // tcp only
 	Pace        string `json:"pace"`         // "fast"(15s) | ""/"normal"(60s) | "slow"(300s)
 	IntervalSec int    `json:"interval_sec"` // explicit seconds, highest priority
+	// Options are the settings only this type understands (options.go); today only
+	// http has any.
+	Options map[string]any `json:"options,omitempty"`
 }
 
 type ProbeCfg struct {
@@ -68,6 +71,7 @@ func normalizeTarget(t *TargetCfg) error {
 	if t.Type == "" {
 		t.Type = "icmp"
 	}
+	var specs []optionSpec
 	switch t.Type {
 	case "icmp":
 		t.Port = 0
@@ -75,8 +79,18 @@ func normalizeTarget(t *TargetCfg) error {
 		if t.Port < 1 || t.Port > 65535 {
 			return fmt.Errorf("tcp target needs a port 1-65535")
 		}
+	case typeHTTP:
+		specs = httpSpecs
 	default:
-		return fmt.Errorf("unknown type %q (icmp|tcp)", t.Type)
+		return fmt.Errorf("unknown type %q (icmp|tcp|http)", t.Type)
+	}
+	if err := normalizeOptions(t.Type, specs, t); err != nil {
+		return err
+	}
+	if t.Type == typeHTTP {
+		if err := validateHTTP(t); err != nil {
+			return err
+		}
 	}
 	if t.Host == "" || len(t.Host) > 253 || strings.ContainsFunc(t.Host, unicode.IsSpace) {
 		return fmt.Errorf("invalid host %q", t.Host)
@@ -101,7 +115,7 @@ func normalizeTarget(t *TargetCfg) error {
 }
 
 func targetAddr(t TargetCfg) string {
-	if t.Type == "tcp" {
+	if t.Type == "tcp" || t.Type == typeHTTP {
 		return net.JoinHostPort(t.Host, strconv.Itoa(t.Port))
 	}
 	return t.Host

@@ -578,21 +578,28 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 		})
 	})
 
+	// The probe types this build can run and each type's own options, so the editor
+	// builds its type list and form from the server (the same endpoint fogping has).
+	mux.HandleFunc("GET /api/probe-types", guard(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, probeTypes())
+	}))
+
 	mux.HandleFunc("GET /api/targets", guard(func(w http.ResponseWriter, r *http.Request) {
 		now := time.Now()
 		type item struct {
-			ID          int64  `json:"id"`
-			Name        string `json:"name"`
-			Type        string `json:"type"`
-			Host        string `json:"host"`
-			Port        int    `json:"port"`
-			Addr        string `json:"addr"`
-			IntervalSec int    `json:"interval_sec"` // effective
-			IntervalSet int    `json:"interval_set"` // explicit override, 0 = from pace
-			Pace        string `json:"pace"`
-			Down        bool   `json:"down"`
-			Last1h      Stats  `json:"last_1h"`
-			Last24h     Stats  `json:"last_24h"`
+			ID          int64          `json:"id"`
+			Name        string         `json:"name"`
+			Type        string         `json:"type"`
+			Host        string         `json:"host"`
+			Port        int            `json:"port"`
+			Addr        string         `json:"addr"`
+			IntervalSec int            `json:"interval_sec"` // effective
+			IntervalSet int            `json:"interval_set"` // explicit override, 0 = from pace
+			Pace        string         `json:"pace"`
+			Options     map[string]any `json:"options,omitempty"`
+			Down        bool           `json:"down"`
+			Last1h      Stats          `json:"last_1h"`
+			Last24h     Stats          `json:"last_24h"`
 		}
 		out := []item{}
 		for _, t := range run.Targets() {
@@ -605,7 +612,7 @@ func newMux(cfg *Config, store *Store, run *Runner) http.Handler {
 			down := len(rec) > 0 && rec[len(rec)-1].R == 0
 			out = append(out, item{
 				ID: t.ID, Name: t.Name, Type: t.Type, Host: t.Host, Port: t.Port, Addr: targetAddr(t),
-				IntervalSec: int(iv.Seconds()), IntervalSet: t.IntervalSec, Pace: pace, Down: down,
+				IntervalSec: int(iv.Seconds()), IntervalSet: t.IntervalSec, Pace: pace, Options: t.Options, Down: down,
 				Last1h:  calcStats(rec),
 				Last24h: calcStats(store.Recent(t.Name, now.Add(-24*time.Hour).Unix())),
 			})
@@ -728,7 +735,7 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 
 // targetFields is what POST and PUT /api/targets accept, for the error that
 // names a field they do not.
-const targetFields = "name, type, host, port, pace, interval_sec"
+const targetFields = "name, type, host, port, pace, interval_sec, options"
 
 // decodeJSONStrict is decodeJSON that also refuses fields v does not have, when
 // accepted (the list to quote back in the error) is not empty.

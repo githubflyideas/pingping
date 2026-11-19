@@ -75,6 +75,7 @@ These are enforced by tests (`api_test.go`): code that breaks one does not pass 
 | DELETE | /api/brand/logo | admin | Remove the custom logo. |
 | GET | /api/i18n | none | Console strings for `?lang=` (or the browser's language): a dictionary keyed by message id, so its keys are data, not field names. |
 | GET | /api/version | none / session | `{"version"}` for everyone; with a session also the instance settings. |
+| GET | /api/probe-types | session | The probe types this build can run, in display order: `[{"type", "label", "uses_port", "options"}]`. The editor builds its type filter and form from it. |
 | GET | /api/targets | session | Every target with its last-hour and last-day summary. |
 | POST | /api/targets | admin | Create a target. Unknown fields are refused. |
 | PUT | /api/targets/{id} | admin | Replace a target. |

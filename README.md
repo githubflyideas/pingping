@@ -49,7 +49,7 @@ In the console, **✎ targets → ⇩ export** downloads the active targets as `
 }
 ```
 
-`type` is `ping` or `tcp`, `port` is for tcp only, `pace` is `fast` / `normal` / `slow`, `interval` (seconds) is optional. Importing makes this host probe every address in the file, so only import lists you trust. Full spec: [docs/targets-format.md](docs/targets-format.md) · JSON Schema: [docs/targets.schema.json](docs/targets.schema.json).
+`type` is `ping`, `tcp` or `http`, `port` is for tcp and http, `options` holds the http settings (path, expected status, …), `pace` is `fast` / `normal` / `slow`, `interval` (seconds) is optional. Importing makes this host probe every address in the file, so only import lists you trust. Full spec: [docs/targets-format.md](docs/targets-format.md) · JSON Schema: [docs/targets.schema.json](docs/targets.schema.json).
 
 ---
 
