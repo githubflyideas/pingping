@@ -173,7 +173,13 @@ func TestZabbixFlag(t *testing.T) {
 	if err != nil || !opt.zabbix || opt.zabbixTok != "/x" {
 		t.Fatalf("parse: %+v %v", opt, err)
 	}
-	if _, _, err := configure(options{zabbix: true}); err == nil {
-		t.Fatal("--zabbix without a token must not start")
+	// --zabbix without a token is a user's mistake in an optional integration. It
+	// must not stop pingping from starting: the stats API simply stays off.
+	cfg, _, err := configure(options{zabbix: true})
+	if err != nil {
+		t.Fatalf("a missing Zabbix token stopped pingping from starting: %v", err)
+	}
+	if cfg.ZabbixToken != "" {
+		t.Fatal("the stats API is on without a token")
 	}
 }

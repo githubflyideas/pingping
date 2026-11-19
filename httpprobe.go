@@ -40,10 +40,6 @@ var httpSpecs = []optionSpec{
 		Help: "Off: a 301 is the answer. On: follow up to 5 redirects and time the whole chain."},
 }
 
-// A malformed spec is a bug in this file: fail when pingping starts, not when
-// someone opens the editor.
-func init() { checkSpecs(typeHTTP, httpSpecs) }
-
 // validateHTTP holds the rules only this prober knows. fogping checks the types
 // and ranges the option specs declare; it cannot know that a path starts with "/".
 func validateHTTP(t *TargetCfg) error {
