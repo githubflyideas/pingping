@@ -45,6 +45,9 @@ func securitySummary(cfg *Config, accounts int) []string {
 	} else {
 		line(true, "listen", cfg.Listen+" (every interface: reachable from the network)")
 	}
+	if !local {
+		line(true, "transport", "plain HTTP: logins and pages cross the network unencrypted; put an HTTPS reverse proxy in front")
+	}
 	switch {
 	case accounts > 0:
 		line(false, "login", fmt.Sprintf("on, %d account(s)", accounts))
@@ -57,6 +60,9 @@ func securitySummary(cfg *Config, accounts int) []string {
 		line(false, "zabbix", "on: GET /api/stats with a read-only token")
 	} else {
 		line(false, "zabbix", "off")
+	}
+	if runningAsRoot() {
+		line(true, "account", "running as root: a flaw anywhere is a flaw with full control of this machine; use an ordinary account")
 	}
 	return out
 }
@@ -224,3 +230,7 @@ func loopbackOnly(listen string) bool {
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
 }
+
+// runningAsRoot is a variable so tests can pretend. On Windows Geteuid is -1, so a
+// service account is never reported as root.
+var runningAsRoot = func() bool { return os.Geteuid() == 0 }

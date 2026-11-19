@@ -24,12 +24,22 @@ func TestConfigureReportsEveryProblem(t *testing.T) {
 }
 
 func TestSecuritySummaryMarksWhatIsExposed(t *testing.T) {
+	old := runningAsRoot
+	runningAsRoot = func() bool { return false }
+	defer func() { runningAsRoot = old }()
 	cfg := defaultConfig()
 	cfg.Listen = "0.0.0.0:8518" // what --bind 0.0.0.0 or a server install gives
 	text := strings.Join(securitySummary(cfg, 0), "\n")
-	if !strings.Contains(text, "! listen") || !strings.Contains(text, "! login     NOT SET UP") {
-		t.Errorf("open, not set up:\n%s", text)
+	for _, want := range []string{"! listen", "! transport", "! login     NOT SET UP"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("open, not set up: missing %q in\n%s", want, text)
+		}
 	}
+	runningAsRoot = func() bool { return true }
+	if text := strings.Join(securitySummary(cfg, 1), "\n"); !strings.Contains(text, "! account") {
+		t.Errorf("root not flagged:\n%s", text)
+	}
+	runningAsRoot = func() bool { return false }
 	for _, l := range []string{"127.0.0.1:8518", "[::1]:8518", "localhost:8518"} {
 		if !loopbackOnly(l) {
 			t.Errorf("%s not seen as this machine only", l)
