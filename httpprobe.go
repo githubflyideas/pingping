@@ -53,13 +53,31 @@ func validateHTTP(t *TargetCfg) error {
 	if !validURLHost(t.Host) {
 		return fmt.Errorf("http host must be a hostname or an IP address")
 	}
-	if p := t.OptString("path"); !strings.HasPrefix(p, "/") {
-		return fmt.Errorf("option \"path\" must start with /")
+	if p := t.OptString("path"); !validURLPath(p) {
+		return fmt.Errorf("option \"path\" must start with / and hold no spaces, # or control characters")
 	}
 	if h := t.OptString("host_header"); h != "" && !validURLHost(h) {
 		return fmt.Errorf("option \"host_header\" must be a hostname or an IP address")
 	}
 	return nil
+}
+
+// validURLPath: starts with "/", and every character is printable and not a space
+// or "#". The path is split at "?" and the query part is placed into the URL as
+// written (url.URL does not escape it), so what may appear in it has to be checked
+// here: a space would corrupt the request line, and "#" would start a fragment that
+// silently drops the rest. Control characters are refused by the options layer and
+// again by net/http, but this prober does not rely on either.
+func validURLPath(p string) bool {
+	if !strings.HasPrefix(p, "/") {
+		return false
+	}
+	for _, r := range p {
+		if r <= ' ' || r == 0x7f || r == '#' {
+			return false
+		}
+	}
+	return true
 }
 
 // validURLHost is a WHITELIST: letters, digits, dot, hyphen, underscore, colon
@@ -121,6 +139,9 @@ func httpRound(ctx context.Context, t TargetCfg, packets int, gap, timeout time.
 			DisableKeepAlives: true,
 			TLSClientConfig:   &tls.Config{MinVersion: tls.VersionTLS12}, // certificates ARE verified
 			Proxy:             nil,                                       // never a proxy taken from the environment
+			// A server chooses how much it sends before the body. Bound it: the default is
+			// 1 MB per probe, from a machine we do not control.
+			MaxResponseHeaderBytes: 64 << 10,
 		},
 		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 			if !follow {

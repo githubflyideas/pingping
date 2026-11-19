@@ -80,6 +80,8 @@ func TestHTTPInputIsJudgedStrictly(t *testing.T) {
 		"path no slash":   {Type: typeHTTP, Host: "example.org", Port: 443, Options: map[string]any{"path": "nope"}},
 		"bad scheme":      {Type: typeHTTP, Host: "example.org", Port: 443, Options: map[string]any{"scheme": "ftp"}},
 		"bad host_header": {Type: typeHTTP, Host: "example.org", Port: 443, Options: map[string]any{"host_header": "a b"}},
+		"path with space": {Type: typeHTTP, Host: "example.org", Port: 443, Options: map[string]any{"path": "/a b"}},
+		"path with #":     {Type: typeHTTP, Host: "example.org", Port: 443, Options: map[string]any{"path": "/a#b"}},
 		"unknown option":  {Type: typeHTTP, Host: "example.org", Port: 443, Options: map[string]any{"verify": false}},
 	} {
 		tg := tg
