@@ -396,6 +396,18 @@
       "ja": "パスワード",
       "ko": "비밀번호"
     },
+    "login.capsLock": {
+      "en": "Caps Lock is on",
+      "zh": "大写锁定已开启",
+      "es": "Bloq Mayús está activado",
+      "fr": "Verr. Maj est activé",
+      "pt": "Caps Lock está ativado",
+      "ru": "Включён Caps Lock",
+      "id": "Caps Lock aktif",
+      "de": "Feststelltaste ist aktiviert",
+      "ja": "Caps Lock がオンです",
+      "ko": "Caps Lock이 켜져 있습니다"
+    },
     "login.signIn": {
       "en": "Sign in",
       "zh": "登录",

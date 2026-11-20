@@ -30,6 +30,7 @@
            border-radius:4px; padding:11px; cursor:pointer; }
   button:hover { background:rgba(232,180,74,.12); }
   .err { color:var(--alert); font-size:12px; margin-top:12px; min-height:16px; }
+  .caps { color:var(--amber); font-size:12px; margin-top:6px; }
 
   html[data-theme="daylight"] {
     --bg:#f4f1e8; --panel:#faf8f1; --screen:#fffef9; --line:#e0dbc9; --ctl:#89887c;
@@ -51,7 +52,8 @@
   <h1 class="mark">pingping <span aria-hidden="true">●</span></h1>
   <p class="sub" data-i18n="login.title">Sign in to pingping</p>
   <label for="user" data-i18n="login.username">USERNAME</label><input id="user" autocomplete="username" autofocus>
-  <label for="pass" data-i18n="login.password">PASSWORD</label><input id="pass" type="password" autocomplete="current-password">
+  <label for="pass" data-i18n="login.password">PASSWORD</label><input id="pass" type="password" autocomplete="current-password" aria-describedby="caps">
+  <p class="caps" id="caps" aria-live="polite"></p>
   <button id="go" data-i18n="login.signIn">Sign in</button>
   <div style="margin-top:18px;text-align:center" data-i18n-picker></div>
   <div class="err" id="err" role="alert"></div>
@@ -76,6 +78,19 @@ async function login() {
   $('err').textContent = d.error || `${T('login.failed')} (HTTP ${res.status})`;
 }
 $('go').onclick = login;
+// Caps Lock hint: the state is read from any key or mouse event (a focus event
+// does not carry it) and shown only while the password field has focus.
+let capsOn = false;
+const showCaps = () => {
+  $('caps').textContent = capsOn && document.activeElement === $('pass') ? T('login.capsLock', 'Caps Lock is on') : '';
+};
+const readCaps = e => {
+  if (typeof e.getModifierState === 'function') { capsOn = e.getModifierState('CapsLock'); showCaps(); }
+};
+for (const type of ['keydown', 'keyup', 'mousedown']) document.addEventListener(type, readCaps);
+$('pass').addEventListener('focus', showCaps);
+$('pass').addEventListener('blur', showCaps);
+document.addEventListener('i18n', showCaps);
 document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 </script>
 </body>
