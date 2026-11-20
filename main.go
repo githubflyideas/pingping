@@ -1,0 +1,228 @@
+package main
+
+import (
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/signal"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+)
+
+var version = "dev"
+
+// options are everything the command line can say, parsed once and reused by the
+// foreground path, the service path and `install` (which bakes them back into the
+// service's command line).
+type options struct {
+	localOnly bool
+	days      int
+	data      string
+	port      int
+	zabbix    bool     // --zabbix: read-only GET /api/stats for the Zabbix template
+	zabbixTok string   // --zabbix-token-file
+	logFile   string   // set only on the elevated re-launch; see elevate_windows.go
+	rawArgs   []string // as given, for install to replay
+}
+
+func main() {
+	log.SetFlags(log.LstdFlags)
+	args := os.Args[1:]
+
+	// Subcommands come before flag parsing, so `pingping install --port 9000`
+	// reads the way a Windows admin expects rather than the way Go's flag package
+	// would otherwise insist on.
+	verb := ""
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		verb = args[0]
+	}
+	switch verb {
+	case "help":
+		printHelp(os.Stdout)
+		return
+	case "version":
+		fmt.Println("pingping", version)
+		return
+	case "selftest":
+		runSelftest(os.Stdout)
+		return
+	case "gen-token":
+		if len(args) != 2 {
+			fmt.Fprintln(os.Stderr, "usage: pingping gen-token FILE")
+			os.Exit(2)
+		}
+		if err := genToken(os.Stdout, args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "pingping: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	case "check":
+		opt, err := parseOptions(args[1:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "pingping: %v\nRun 'pingping help' for examples.\n", err)
+			os.Exit(2)
+		}
+		os.Exit(runCheck(os.Stdout, opt))
+	case "run", "install", "uninstall", "tray", "console", "firewall":
+		args = args[1:]
+	case "":
+	default:
+		fmt.Fprintf(os.Stderr, "pingping: unknown command %q\nRun 'pingping help' for examples.\n", verb)
+		os.Exit(2)
+	}
+
+	opt, err := parseOptions(args)
+	if err != nil {
+		if err == flag.ErrHelp {
+			printHelp(os.Stdout)
+			return
+		}
+		fmt.Fprintf(os.Stderr, "pingping: %v\nRun 'pingping help' for examples.\n", err)
+		os.Exit(2)
+	}
+
+	// install/uninstall need Administrator. On Windows this elevates itself rather
+	// than telling the operator to go and open a different window.
+	if verb == "install" || verb == "uninstall" {
+		os.Exit(runServiceVerb(verb, opt))
+	}
+	// The tray companion to an installed service: a separate process in the
+	// logged-in user's session, because a service cannot display UI at all.
+	if verb == "tray" {
+		os.Exit(runTrayCompanion(opt))
+	}
+	if verb == "firewall" {
+		os.Exit(runFirewallVerb(opt))
+	}
+
+	// `console`, and a bare launch of an installed copy, both mean "show me the
+	// console". Only `run` and a portable copy serve in the foreground.
+	//
+	// The distinction matters because the two used to be the same thing: the
+	// Start Menu shortcut passed no arguments, so double-clicking it started a
+	// second server on the port the service already held, which failed to bind
+	// and exited before the window could be read.
+	if verb == "console" || verb == "" {
+		if code, handled := openConsoleForInstalled(opt); handled {
+			os.Exit(code)
+		}
+		if verb == "console" {
+			fmt.Fprintln(os.Stderr, "pingping: no installed service found on this machine.\n"+
+				"Run 'pingping install' first, or 'pingping run' to serve from this folder.")
+			os.Exit(2)
+		}
+	}
+
+	// Started by the service control manager rather than a person: hand over to the
+	// platform's service loop, which calls back into startApp.
+	if isService() {
+		if err := runAsService(opt); err != nil {
+			log.Fatalf("service: %v", err)
+		}
+		return
+	}
+	if err := serveForeground(opt); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func parseOptions(args []string) (options, error) {
+	var opt options
+	opt.rawArgs = append([]string(nil), args...)
+
+	fs := flag.NewFlagSet("pingping", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	localOnly := fs.Bool("localhost", false, "bind 127.0.0.1 only")
+	days := fs.Int("days", 0, "days of history to keep (default 300)")
+	data := fs.String("data", "", "data directory (default: portable ./data beside the exe, else the system location)")
+	port := fs.Int("port", 0, "console port (default 8518)")
+	logFile := fs.String("log-file", "", "") // internal: the elevated child writes here
+	showVer := fs.Bool("version", false, "print version")
+	zabbix := fs.Bool("zabbix", false, "serve read-only stats for the Zabbix template")
+	zabbixTok := fs.String("zabbix-token-file", "", "file holding the Zabbix token")
+
+	if err := fs.Parse(args); err != nil {
+		return opt, err
+	}
+	if *showVer {
+		fmt.Println("pingping", version)
+		os.Exit(0)
+	}
+	if rest := fs.Args(); len(rest) > 0 {
+		return opt, fmt.Errorf("unexpected argument %q", rest[0])
+	}
+	opt.localOnly, opt.days, opt.data, opt.port = *localOnly, *days, *data, *port
+	opt.logFile = *logFile
+	opt.zabbix, opt.zabbixTok = *zabbix, *zabbixTok
+	return opt, nil
+}
+
+// configure turns options into the runtime Config. Credentials are deliberately
+// absent: they live in the database, set on first run through the console.
+func configure(opt options) (*Config, bool, error) {
+	cfg := defaultConfig()
+	if opt.days > 0 {
+		cfg.RetentionDays = opt.days
+	}
+	// Every problem is collected, so a refused start names all of them at once.
+	var problems []error
+	if opt.port < 0 || opt.port > 65535 {
+		problems = append(problems, fmt.Errorf("--port must be 1-65535"))
+		opt.port = 0
+	}
+	if opt.port > 0 {
+		cfg.Listen = hostOf(cfg.Listen) + ":" + strconv.Itoa(opt.port)
+	}
+	if opt.localOnly {
+		cfg.Listen = "127.0.0.1" + portOf(cfg.Listen)
+	}
+	tok, ignored, err := resolveZabbixToken(opt.zabbix, opt.zabbixTok, os.Getenv)
+	if err != nil {
+		problems = append(problems, err)
+	}
+	os.Unsetenv("PINGPING_ZABBIX_TOKEN")
+	cfg.ZabbixToken = tok
+	if ignored {
+		log.Printf("note: a Zabbix token is set but --zabbix was not given; the Zabbix stats API stays off")
+	}
+	dir, portable := resolveDataDir(opt.data)
+	cfg.DataDir = dir
+	if len(problems) > 0 {
+		return cfg, portable, errors.Join(problems...)
+	}
+	return cfg, portable, nil
+}
+
+func serveForeground(opt options) error {
+	cfg, portable, err := configure(opt)
+	if err != nil {
+		return err
+	}
+	a, err := startApp(cfg, opt.port, opt.localOnly)
+	if err != nil {
+		return err
+	}
+	a.banner(portable)
+
+	// Windows only: a tray icon so a double-clicked copy is not a console window
+	// with no other affordance. Closing it from the menu stops the program.
+	quit := make(chan struct{})
+	var once sync.Once
+	startForegroundTray("http://localhost"+portOf(cfg.Listen),
+		func() { once.Do(func() { close(quit) }) })
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	select {
+	case <-sig:
+	case <-quit:
+	}
+	a.shutdown()
+	log.Printf("pingping shut down")
+	return nil
+}

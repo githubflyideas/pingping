@@ -1,0 +1,173 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+	"strconv"
+	"time"
+)
+
+// Round 是 pingping 的原子数据单元:一轮探测的全部原始样本。
+// 存分布而不是均值 —— 这是整个项目的立项理由。
+type Round struct {
+	T  int64     `json:"t"`           // unix 秒
+	S  int       `json:"s"`           // 发出
+	R  int       `json:"r"`           // 收到
+	MS []float64 `json:"ms"`          // RTT 样本(毫秒)
+	B  bool      `json:"b,omitempty"` // flagged as a loss burst
+	Z  float64   `json:"z,omitempty"` // robust z-score behind the flag (tooltip evidence)
+}
+
+// icmpPayload is the 14 data bytes every echo request carries: a magic string plus
+// a per-round nonce. On Unix it is how a raw socket tells our replies from every
+// other ping on the box; on Windows the kernel matches replies to handles for us,
+// but the payload stays byte-identical so an RTT measured on either platform is
+// measuring the same ICMP message — 8-byte header plus icmpPayloadLen.
+const (
+	icmpMagic = "pingping"
+
+	// icmpPayloadLen is fixed on purpose and does not follow the magic.
+	//
+	// It used to be len(icmpMagic)+4, and renaming the program from SmokeTrail
+	// shortened the magic from ten bytes to eight — which silently changed the
+	// ICMP message on the wire from 22 bytes to 20. A probe's packet size is a
+	// measurement parameter: two hosts must send the same thing for their
+	// numbers to be comparable, and so must one host before and after an
+	// upgrade. It is not a consequence of how long the product name happens to
+	// be, and a search-and-replace must not be able to change it.
+	//
+	// Change this only deliberately, knowing that measurements either side of
+	// the change are of different packets.
+	icmpPayloadLen = 12
+)
+
+// icmpPayload builds the echo payload: the magic, then the per-round nonce in
+// the last four bytes. The magic is truncated or zero-padded to fit, so the
+// length above holds whatever the magic becomes.
+func icmpPayload(nonce [4]byte) []byte {
+	p := make([]byte, icmpPayloadLen)
+	copy(p, icmpMagic)
+	copy(p[icmpPayloadLen-len(nonce):], nonce[:])
+	return p
+}
+
+// probeParams 解析目标的探测节奏。优先级:显式 interval_sec > pace 档位 > 全局默认。
+// fast 档同时把每轮包数提到 30,分布更细 —— 快节奏链路值得更好的分辨率。
+func probeParams(t TargetCfg, p ProbeCfg) (interval time.Duration, packets int) {
+	iv, pk := p.IntervalSec, p.Packets
+	switch t.Pace {
+	case "fast":
+		iv, pk = 15, 30
+	case "slow":
+		iv = 300
+	}
+	if t.IntervalSec > 0 {
+		iv = t.IntervalSec
+	}
+	return time.Duration(iv) * time.Second, pk
+}
+
+func probeLoop(t TargetCfg, p ProbeCfg, store *Store, det *Detector, stop chan struct{}) {
+	// ctx is cancelled when the target stops, so a probe in flight (an HTTP request
+	// waiting on a slow server) ends at once instead of finishing its round.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-stop:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	interval, packets := probeParams(t, p)
+	gap := time.Duration(p.GapMs) * time.Millisecond
+	timeout := time.Duration(p.TimeoutMs) * time.Millisecond
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		var r Round
+		var err error
+		switch t.Type {
+		case "icmp":
+			r, err = icmpRound(t.Host, packets, gap, timeout)
+		case "tcp":
+			r, err = tcpRound(t.Host, t.Port, packets, gap, timeout)
+		case typeHTTP:
+			r, err = httpRound(ctx, t, packets, gap, timeout)
+		default:
+			// Validation keeps unknown types out of the database. Write nothing
+			// rather than a round that looks like a measurement.
+			log.Printf("[%s] unknown type %q; not probing", t.Name, t.Type)
+			return
+		}
+		if ctx.Err() != nil {
+			return // stopped mid-round: a partial round must not be stored
+		}
+		if err != nil {
+			log.Printf("[%s] probe error: %v", t.Name, err)
+			r = Round{T: time.Now().Unix(), S: packets, R: 0} // 解析失败按全丢记录,不留时间空洞
+		}
+		r.B, r.Z = det.CheckBurst(t.Name, r) // verdict + z evidence, written with the round
+		if err := store.Append(t.Name, r); err != nil {
+			log.Printf("[%s] write error: %v", t.Name, err)
+		}
+
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+func resolveIPv4(host string) ([4]byte, error) {
+	var out [4]byte
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return out, err
+	}
+	for _, ip := range ips {
+		if v4 := ip.To4(); v4 != nil {
+			copy(out[:], v4)
+			return out, nil
+		}
+	}
+	return out, fmt.Errorf("%s 没有 IPv4 地址(v1 仅支持 IPv4)", host)
+}
+
+// ---- TCP:connect 耗时即 RTT 近似 ----
+// Resolve once per round and dial the IP: Go doesn't cache DNS, so dialing a
+// hostname would add a lookup to every sample and measure the resolver, not the link.
+//
+// Windows note: this is a full three-way handshake, not a half-open SYN probe.
+// Raw TCP sends have been blocked since XP SP2, so a SYN-only probe would need
+// Npcap — a driver install that would end the single-binary story. The connect
+// timing is therefore what both platforms measure, and it includes the remote
+// stack's accept path, not just the link.
+
+func tcpRound(host string, port, packets int, gap, timeout time.Duration) (Round, error) {
+	r := Round{T: time.Now().Unix(), S: packets}
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return r, err
+	}
+	if len(ips) == 0 {
+		return r, fmt.Errorf("%s: no address", host)
+	}
+	addr := net.JoinHostPort(ips[0].String(), strconv.Itoa(port))
+	for i := 0; i < packets; i++ {
+		t0 := time.Now()
+		c, err := net.DialTimeout("tcp", addr, timeout)
+		if err == nil {
+			r.R++
+			r.MS = append(r.MS, float64(time.Since(t0).Microseconds())/1000.0)
+			c.Close()
+		}
+		if i < packets-1 {
+			time.Sleep(gap)
+		}
+	}
+	return r, nil
+}

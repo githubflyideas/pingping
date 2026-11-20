@@ -1,0 +1,158 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. 0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with: { go-version: '1.27.4' }
+
+      # One step, one output. Two conditional steps writing the same output name
+      # meant a manual run produced an empty version and named every artefact
+      # "pingping--setup.exe".
+      - id: v
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then v="$INPUT_VERSION"; else v="${GITHUB_REF_NAME#v}"; fi
+          [ -n "$v" ] || { echo "no version could be determined"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "building $v"
+
+      # go.sum is committed; a release builds exactly the pinned module graph.
+      - run: go mod download && go build ./... && go test ./...
+
+      # One `go build` per target, no toolchain, no container. If this ever needs
+      # more than this, ADR 1 has been undone.
+      # Pinned, not @latest: this step decides what the version resource of every
+      # shipped .exe says, and a release should not change because an upstream
+      # tool did. gen-resource.sh writes one object per architecture — see the
+      # header in that script for why a single .syso cannot work.
+      - name: stamp the Windows resources (version, icon, manifest)
+        run: |
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.4.1
+          PATH="$(go env GOPATH)/bin:$PATH" packaging/gen-resource.sh "${{ steps.v.outputs.version }}"
+          git diff --stat -- 'resource_windows_*.syso' || true
+
+      - name: cross-build
+        env:
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          mkdir -p dist
+          for t in windows/amd64 windows/386 windows/arm64 linux/amd64 linux/arm64 darwin/arm64; do
+            os=${t%/*}; arch=${t#*/}
+            # One lowercase name everywhere. The brand is lowercase, so the
+            # binary, the service key and the file on disk all agree.
+            name="pingping-${os}-${arch}"
+            [ "$os" = windows ] && name="${name}.exe"
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath \
+              -ldflags "-s -w -X main.version=v${V}" -o "dist/${name}" .
+          done
+          ls -la dist/
+
+      # Nothing is published that has not been run. A release is the one place
+      # where "it compiled" being mistaken for "it works" reaches other people:
+      # every artifact below is downloaded and trusted, and a binary that cannot
+      # open its database passes every other check in this file.
+      #
+      # Only linux/amd64 can execute here, and that is enough — the storage
+      # layer is the same pure-Go code on all six targets, so a driver fault
+      # shows up identically on any of them.
+      - name: smoke-test before publishing anything
+        run: |
+          set -euo pipefail
+          bin="$PWD/dist/pingping-linux-amd64"
+          chmod +x "$bin"
+          work=$(mktemp -d); mkdir -p "$work/data"
+
+          "$bin" selftest | tee "$work/selftest.txt"
+          if grep -q "CANNOT STORE DATA" "$work/selftest.txt"; then
+            echo "::error::refusing to publish: the built binary cannot open a database"
+            exit 1
+          fi
+
+          "$bin" --data "$work/data" --port 8599 --localhost &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            curl -sf -o /dev/null "http://127.0.0.1:8599/login" && break
+            sleep 0.25
+          done
+          curl -sf -X POST http://127.0.0.1:8599/api/setup \
+            -H 'Content-Type: application/json' \
+            -d '{"User":"ci","Pass":"correct horse battery"}' > /dev/null
+          curl -sf -c "$work/c" -X POST http://127.0.0.1:8599/api/login \
+            -H 'Content-Type: application/json' \
+            -d '{"User":"ci","Pass":"correct horse battery"}' > /dev/null
+          curl -sf -b "$work/c" -X POST http://127.0.0.1:8599/api/targets \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"smoke","type":"icmp","host":"127.0.0.1","pace":"fast"}' > /dev/null
+          curl -sf -b "$work/c" http://127.0.0.1:8599/api/targets | grep -q '"name":"smoke"'
+          test -s "$work/data/pingping.db"
+          echo "smoke test passed; safe to publish"
+
+      # The portable zip carries an empty-but-present data/ folder. That single
+      # directory is the entire portable-vs-installed switch (ADR 5).
+      - name: portable zip
+        env:
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          for arch in amd64 arm64; do
+            d=$(mktemp -d)
+            mkdir -p "$d/data"
+            cp "dist/pingping-windows-${arch}.exe" "$d/pingping.exe"
+            cp packaging/portable/README.txt "$d/data/README.txt"
+            cp README.md LICENSE "$d/"
+            (cd "$d" && zip -qr - .) > "dist/pingping-${V}-windows-${arch}-portable.zip"
+          done
+          ls -la dist/*.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with: { name: dist, path: dist/ }
+
+  # makensis runs on Linux, so the installer comes out of the same ubuntu job
+  # family as the binaries — no Windows runner anywhere in the release path.
+  installer:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: { name: dist, path: dist }
+      - run: sudo apt-get update && sudo apt-get install -y nsis
+      - name: build setup.exe
+        run: |
+          cp dist/pingping-windows-amd64.exe dist/pingping.exe
+          cd packaging && makensis -DVERSION=${{ needs.build.outputs.version }} pingping.nsi
+          ls -la ../dist/*setup.exe
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with: { name: installer, path: dist/*setup.exe }
+
+  publish:
+    needs: [build, installer]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: { path: art }
+      - run: |
+          mkdir -p out && find art -type f \( -name '*.exe' -o -name '*.zip' -o -name 'pingping-*' \) -exec cp {} out/ \;
+          cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          files: out/*
+          generate_release_notes: true

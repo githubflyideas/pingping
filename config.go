@@ -1,0 +1,135 @@
+package main
+
+import (
+	"fmt"
+	"net"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
+
+// Program parameters come from the command line; everything an operator changes
+// day to day — targets, the admin password — lives in SQLite and is edited in the
+// web console. Nothing is read from a config file, so there is no file to find,
+// no file to back up separately, and no file whose format can drift from the UI.
+// licenceName is what the program calls its own licence, everywhere it says so.
+// It is not translated: it has to match the LICENSE file well enough for a
+// reader to check, and a test asserts that it does. This project shipped four
+// places claiming MIT over an Apache 2.0 LICENSE once, so the claim and the
+// file are pinned to each other rather than both to somebody's memory.
+const licenceName = "Elastic License 2.0"
+
+type Config struct {
+	ZabbixToken   string // --zabbix: non-empty turns on GET /api/stats (stats.go)
+	Listen        string
+	DataDir       string
+	Probe         ProbeCfg
+	HotDays       int // full samples kept this long
+	RetentionDays int // downsampled data kept this long
+}
+
+func defaultConfig() *Config {
+	return &Config{
+		// Loopback by default; see defaultBind in settings.go for why that is a
+		// security decision and not a preference. The console changes it.
+		Listen:        defaultBind + ":8518",
+		DataDir:       "./data",
+		Probe:         ProbeCfg{IntervalSec: 60, Packets: 20, GapMs: 50, TimeoutMs: 1000},
+		HotDays:       2,   // raw samples: enough for the sub-day windows
+		RetentionDays: 300, // hourly rollups; --days overrides
+	}
+}
+
+type TargetCfg struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"` // "icmp" (default) | "tcp" | "http"
+	Host        string `json:"host"`
+	Port        int    `json:"port"`         // tcp only
+	Pace        string `json:"pace"`         // "fast"(15s) | ""/"normal"(60s) | "slow"(300s)
+	IntervalSec int    `json:"interval_sec"` // explicit seconds, highest priority
+	// Options are the settings only this type understands (options.go); today only
+	// http has any.
+	Options map[string]any `json:"options,omitempty"`
+}
+
+type ProbeCfg struct {
+	IntervalSec int
+	Packets     int
+	GapMs       int
+	TimeoutMs   int
+}
+
+// normalizeTarget is the single validation gate for the web API, so the DB never
+// holds a target the prober can't run.
+func normalizeTarget(t *TargetCfg) error {
+	t.Type = strings.TrimSpace(t.Type)
+	t.Host = strings.TrimSpace(t.Host)
+	t.Name = strings.TrimSpace(t.Name)
+	t.Pace = strings.TrimSpace(t.Pace)
+	if t.Type == "" {
+		t.Type = "icmp"
+	}
+	var specs []optionSpec
+	switch t.Type {
+	case "icmp":
+		t.Port = 0
+	case "tcp":
+		if t.Port < 1 || t.Port > 65535 {
+			return fmt.Errorf("tcp target needs a port 1-65535")
+		}
+	case typeHTTP:
+		specs = httpSpecs
+	default:
+		return fmt.Errorf("unknown type %q (icmp|tcp|http)", t.Type)
+	}
+	if err := normalizeOptions(t.Type, specs, t); err != nil {
+		return err
+	}
+	if t.Type == typeHTTP {
+		if err := validateHTTP(t); err != nil {
+			return err
+		}
+	}
+	if t.Host == "" || len(t.Host) > 253 || strings.ContainsFunc(t.Host, unicode.IsSpace) || numericButNotIP(t.Host) {
+		return fmt.Errorf("invalid host %q", t.Host)
+	}
+	switch t.Pace {
+	case "normal":
+		t.Pace = ""
+	case "", "fast", "slow":
+	default:
+		return fmt.Errorf("invalid pace %q (fast|normal|slow)", t.Pace)
+	}
+	if t.IntervalSec < 0 || t.IntervalSec > 86400 {
+		return fmt.Errorf("interval must be 1-86400 seconds (0 = use pace)")
+	}
+	if t.Name == "" {
+		t.Name = targetAddr(*t)
+	}
+	if utf8.RuneCountInString(t.Name) > 64 || strings.ContainsFunc(t.Name, unicode.IsControl) {
+		return fmt.Errorf("name must be at most 64 printable characters")
+	}
+	return nil
+}
+
+func targetAddr(t TargetCfg) string {
+	if t.Type == "tcp" || t.Type == typeHTTP {
+		return net.JoinHostPort(t.Host, strconv.Itoa(t.Port))
+	}
+	return t.Host
+}
+
+// numericButNotIP catches an address typed wrongly, such as 999.999.999.999: made
+// only of digits and dots, so it is meant as an IPv4 address, but it is not one.
+// Left alone it would be taken for a host NAME and shown as 100% loss. No real
+// host name is all digits (RFC 3696 forbids an all-numeric top label).
+func numericButNotIP(h string) bool {
+	for _, r := range h {
+		if r != '.' && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return net.ParseIP(h) == nil
+}

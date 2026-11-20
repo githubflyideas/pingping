@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,"><title>Settings — pingping</title>
+<style>
+:root {color-scheme:dark;--bg:#0e1116;--card:#161b22;--line:#272e38; --ctl:#626972;--fg:#e6edf3;
+ --dim:#8b949e;--acc:#3fb950;--err:#f85149;--warn:#d29922}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+ font:14px/1.55 -apple-system,"Segoe UI",system-ui,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header .mark{font:600 18px ui-monospace,Consolas,monospace;letter-spacing:.5px}
+header a{color:var(--dim);text-decoration:none;font-size:13px;display:inline-flex;align-items:center;min-height:24px}
+header a:hover{color:var(--fg)}
+header .sp{flex:1}
+main{max-width:860px;margin:0 auto;padding:24px 24px 64px}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;
+ padding:20px 22px;margin-bottom:18px}
+h2{margin:0 0 4px;font-size:15px;font-weight:600}
+h2+p.sub{margin:0 0 18px;color:var(--dim);font-size:13px}
+label{display:block;margin:12px 0 5px;font-size:12px;color:var(--dim)}
+input,select{padding:8px 10px;background:#0e1116;border:1px solid var(--ctl);
+ border-radius:6px;color:var(--fg);font:inherit;min-width:0}
+input:focus,select:focus{outline:none;border-color:var(--acc)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1;min-width:150px}
+.row input,.row select{width:100%}
+button{padding:8px 14px;background:var(--acc);border:0;border-radius:6px;
+ color:#06130a;font:600 13px inherit;cursor:pointer;white-space:nowrap}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:500}
+button.danger{background:transparent;border:1px solid var(--err);color:var(--err);font-weight:500}
+button:disabled{opacity:.5;cursor:default}
+table{width:100%;border-collapse:collapse;margin-top:6px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+ color:var(--dim);font-weight:500;padding:8px 8px 8px 0;border-bottom:1px solid var(--line)}
+td{padding:9px 8px 9px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.tag{font-size:11px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
+.tag.admin{color:var(--acc);border-color:#1f6f33}
+.msg{margin-top:12px;font-size:13px;min-height:19px}
+.msg.err{color:var(--err)} .msg.ok{color:var(--acc)} .msg.warn{color:var(--warn)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0;font-size:13px}
+dt{color:var(--dim)} dd{margin:0;font-family:ui-monospace,Consolas,monospace;word-break:break-all}
+.hide{display:none}
+
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tblwrap{overflow-x:auto}
+dd a{display:inline-flex;align-items:center;min-height:24px}
+.lang-picker{background:#161b22;color:#8b949e;border:1px solid var(--ctl);border-radius:6px;
+ padding:5px 8px;font:inherit;font-size:12px;cursor:pointer}
+.lang-picker:focus{outline:none;border-color:#3fb950}
+.lang-picker option{background:#161b22;color:#e6edf3}
+  .brandrow { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:10px 0 6px; }
+  #brandDrop { border:1px dashed transparent; border-radius:10px; padding:8px;
+               margin:-8px -8px 0; transition:border-color .12s, background .12s; }
+  #brandDrop.over { border-color:var(--phos); background:rgba(127,255,191,.06); }
+  .brandprev { width:72px; height:72px; border:1px solid var(--line); border-radius:8px;
+               display:flex; align-items:center; justify-content:center; overflow:hidden;
+               background:var(--panel); flex:none; }
+  .brandprev img { max-width:100%; max-height:100%; }
+</style></head><body>
+<header>
+  <h1 class="mark" style="margin:0">pingping</h1>
+  <a href="/" data-i18n="settings.back">&larr; back to the graph</a>
+  <div class="sp"></div>
+  <span id="whoami" style="color:var(--dim);font-size:13px"></span>
+  <span data-i18n-picker></span>
+  <a href="#" id="signout" data-i18n="settings.signOut">Sign out</a>
+</header>
+<main>
+
+  <section id="secPassword">
+    <h2 data-i18n="settings.pwTitle">Your password</h2>
+    <p class="sub" data-i18n="settings.pwSub">Changing it signs this account out everywhere, including here.</p>
+    <div class="row">
+      <div><label for="pwOld" data-i18n="settings.pwCurrent">Current password</label><input id="pwOld" type="password" autocomplete="current-password"></div>
+      <div><label for="pwNew" data-i18n="settings.pwNew">New password</label><input id="pwNew" type="password" autocomplete="new-password"></div>
+      <div><label for="pwNew2" data-i18n="settings.pwConfirm">Confirm</label><input id="pwNew2" type="password" autocomplete="new-password"></div>
+      <button id="pwGo" data-i18n="settings.pwGo">Change</button>
+    </div>
+    <div class="msg" id="pwMsg" role="status"></div>
+  </section>
+
+  <section id="secUsers" class="hide">
+    <h2 data-i18n="settings.usersTitle">Accounts</h2>
+    <p class="sub" data-i18n="settings.usersSub">An admin can add and edit targets. A viewer can only look at graphs.</p>
+    <div class="tblwrap"><table><thead><tr><th data-i18n="settings.colName">Name</th><th data-i18n="settings.colRole">Role</th><th style="width:1%"></th></tr></thead>
+      <tbody id="userRows"></tbody></table></div>
+    <div class="row" style="margin-top:16px">
+      <div><label for="nuName" data-i18n="settings.newAccount">New account</label><input id="nuName" placeholder="username"></div>
+      <div><label for="nuPass" data-i18n="setup.password">Password</label><input id="nuPass" type="password" placeholder="at least 8 characters" data-i18n-ph="settings.passwordPh"></div>
+      <div style="flex:0 0 130px"><label for="nuRole" data-i18n="settings.colRole">Role</label>
+        <select id="nuRole"><option value="viewer">viewer</option><option value="admin">admin</option></select></div>
+      <button id="nuGo" data-i18n="settings.add">Add</button>
+    </div>
+    <div class="msg" id="uMsg" role="status"></div>
+  </section>
+
+  <section id="secPort" class="hide">
+    <h2 data-i18n="settings.portTitle">Console port</h2>
+    <p class="sub">Takes effect when the service restarts. The tray icon can restart it,
+      and fixes the firewall rule at the same time.</p>
+    <div class="row">
+      <div style="flex:0 0 120px"><label for="portIn" data-i18n="settings.portTitle">Port</label><input id="portIn" type="number" min="1" max="65535"></div>
+      <div style="flex:0 0 190px"><label for="bindIn" data-i18n="settings.bindTitle">Listen on</label><input id="bindIn" type="text" spellcheck="false"></div>
+      <button id="portGo" data-i18n="settings.save">Save</button>
+    </div>
+    <p class="sub" data-i18n="settings.bindHelp">127.0.0.1 keeps the console on this machine — nobody else can open it. 0.0.0.0 opens it to everyone who can reach this host; set a password first, and only on a network you trust.</p>
+    <p class="sub" id="bindNow"></p>
+    <div class="msg" id="portMsg" role="status"></div>
+  </section>
+
+  <section id="secBrand" class="hide">
+    <h2 data-i18n="settings.brandTitle">Console logo</h2>
+    <p class="sub" data-i18n="settings.brandSub">Replace the mark in the header with your own. It is stored in the database, so a copy of the data carries the brand with it.</p>
+    <div class="brandrow" id="brandDrop">
+      <span class="brandprev" id="brandPrev"></span>
+      <!-- No accept filter, on purpose. It was "image/*", then a list of
+           extensions, and in both shapes the Windows dialog opened on a folder
+           that appeared to contain no images at all — the filter decides what
+           you are allowed to see, and when it gets it wrong the file you came
+           for is simply not there. Nothing is gained by filtering here: the
+           server decides by reading the first bytes of whatever arrives, which
+           it has to do anyway, because a filter in the page is a suggestion and
+           a magic number is a fact. Pick the wrong file and you get a sentence
+           telling you so, which is a better failure than an empty folder. -->
+      <input type="file" id="brandFile" hidden>
+      <button id="brandPick" data-i18n="settings.brandChoose">Choose an image</button>
+      <button id="brandClear" class="ghost hide" data-i18n="settings.brandReset">Use the default mark</button>
+    </div>
+    <p class="sub" data-i18n="settings.brandDrop">Drag an image here, or paste one, or choose a file.</p>
+    <p class="sub" data-i18n="settings.brandFormats">PNG, JPEG, GIF or WebP, up to 256 KB. SVG is not accepted because it can carry script.</p>
+    <p class="msg" id="brandMsg" role="status"></p>
+  </section>
+
+  <section>
+    <h2 data-i18n="settings.aboutTitle">About</h2>
+    <p class="sub" data-i18n="about.tagline">Latency distribution and packet loss, kept as a distribution rather than an average.</p>
+    <dl>
+      <dt data-i18n="settings.version">Version</dt><dd id="abVer">—</dd>
+      <dt data-i18n="settings.listening">Listening on</dt><dd id="abListen">—</dd>
+      <dt data-i18n="settings.dataDir">Data</dt><dd id="abData">—</dd>
+      <dt data-i18n="settings.retention">Retention</dt><dd id="abRet">—</dd>
+      <dt data-i18n="settings.source">Source</dt><dd><a href="https://github.com/githubflyideas/pingping" target="_blank"
+        rel="noopener" style="color:var(--acc)">github.com/githubflyideas/pingping</a></dd>
+      <dt data-i18n="settings.license">License</dt><dd>Elastic License 2.0</dd>
+    </dl>
+  </section>
+
+</main>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const JSONH = { 'Content-Type': 'application/json' };
+let me = null;
+
+function say(el, text, cls) { el.className = 'msg' + (cls ? ' ' + cls : ''); el.textContent = text; }
+
+async function api(method, url, body) {
+  const res = await fetch(url, {
+    method,
+    headers: body === undefined ? undefined : JSONH,
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+  return d;
+}
+
+async function load() {
+  try { me = await api('GET', '/api/me'); }
+  catch { location.href = '/login'; return; }
+
+  $('whoami').textContent = me.user + ' · ' + me.role;
+  $('abVer').textContent = me.version;
+  $('abListen').textContent = me.listen;
+  $('abData').textContent = me.data_dir;
+  $('abRet').textContent = me.retention_days + ' ' + T('settings.days');
+  $('portIn').value = me.port;
+  // Running now, and stored for next time. Between a save and the restart that
+  // applies it those differ, and a field that showed only one of them would be
+  // lying in exactly the window where someone is checking their own work.
+  $('bindIn').value = me.bind_pending || me.bind || '';
+  if (me.bind_pending && me.bind_pending !== me.bind) {
+    $('bindNow').textContent = T('settings.bindPending')
+      .replace('{now}', me.bind).replace('{next}', me.bind_pending);
+  } else {
+    $('bindNow').textContent = '';
+  }
+
+  if (me.role === 'admin') {
+    $('secUsers').classList.remove('hide');
+    $('secPort').classList.remove('hide');
+    loadUsers();
+  }
+}
+
+async function loadUsers() {
+  let users = [];
+  try { users = await api('GET', '/api/users'); }
+  catch (e) { say($('uMsg'), e.message, 'err'); return; }
+
+  const tb = $('userRows');
+  tb.textContent = '';
+  for (const u of users) {
+    const tr = document.createElement('tr');
+
+    const tdName = document.createElement('td');
+    tdName.textContent = u.name;                       // never innerHTML: user-supplied
+    if (u.name === me.user) {
+      const you = document.createElement('span');
+      you.className = 'tag'; you.style.marginLeft = '8px'; you.textContent = T('settings.you');
+      tdName.append(you);
+    }
+
+    const tdRole = document.createElement('td');
+    const sel = document.createElement('select');
+    sel.setAttribute('aria-label', T('settings.colRole') + ': ' + u.name);
+    for (const r of ['admin', 'viewer']) {
+      const o = document.createElement('option');
+      o.value = r; o.textContent = r; o.selected = u.role === r;
+      sel.append(o);
+    }
+    sel.onchange = async () => {
+      try { await api('POST', `/api/users/${encodeURIComponent(u.name)}/role`, { role: sel.value });
+            say($('uMsg'), `${u.name} is now ${sel.value}.`, 'ok'); loadUsers(); }
+      catch (e) { say($('uMsg'), e.message, 'err'); sel.value = u.role; }
+    };
+    tdRole.append(sel);
+
+    const tdAct = document.createElement('td');
+    tdAct.style.textAlign = 'right';
+    tdAct.style.whiteSpace = 'nowrap';
+
+    const reset = document.createElement('button');
+    reset.className = 'ghost'; reset.textContent = T('settings.resetPw');
+    reset.onclick = async () => {
+      const p = prompt(`New password for ${u.name} (at least 8 characters):`);
+      if (!p) return;
+      try { await api('POST', `/api/users/${encodeURIComponent(u.name)}/password`, { pass: p });
+            say($('uMsg'), `Password reset for ${u.name}. Their sessions were signed out.`, 'ok'); }
+      catch (e) { say($('uMsg'), e.message, 'err'); }
+    };
+    tdAct.append(reset);
+
+    if (u.name !== me.user) {
+      const del = document.createElement('button');
+      del.className = 'danger'; del.style.marginLeft = '8px'; del.textContent = T('settings.delete');
+      del.onclick = async () => {
+        if (!confirm(`Delete the account ${u.name}?`)) return;
+        try { await api('DELETE', `/api/users/${encodeURIComponent(u.name)}`);
+              say($('uMsg'), `Deleted ${u.name}.`, 'ok'); loadUsers(); }
+        catch (e) { say($('uMsg'), e.message, 'err'); }
+      };
+      tdAct.append(del);
+    }
+
+    tr.append(tdName, tdRole, tdAct);
+    tb.append(tr);
+  }
+}
+
+$('pwGo').onclick = async () => {
+  const m = $('pwMsg');
+  if ($('pwNew').value !== $('pwNew2').value) { say(m, T('setup.mismatch'), 'err'); return; }
+  try {
+    await api('POST', '/api/password', { old: $('pwOld').value, new: $('pwNew').value });
+    say(m, T('settings.pwDone'), 'ok');
+    setTimeout(() => location.href = '/login', 1200);
+  } catch (e) { say(m, e.message, 'err'); }
+};
+
+$('nuGo').onclick = async () => {
+  const m = $('uMsg');
+  try {
+    await api('POST', '/api/users',
+      { name: $('nuName').value, pass: $('nuPass').value, role: $('nuRole').value });
+    $('nuName').value = ''; $('nuPass').value = '';
+    say(m, 'Account created.', 'ok');
+    loadUsers();
+  } catch (e) { say(m, e.message, 'err'); }
+};
+
+$('portGo').onclick = async () => {
+  const m = $('portMsg');
+  try {
+    const d = await api('POST', '/api/settings/port',
+      { port: +$('portIn').value, bind: $('bindIn').value.trim() });
+    say(m, d.note || 'Saved.', 'warn');
+  } catch (e) { say(m, e.message, 'err'); }
+};
+
+$('signout').onclick = async e => {
+  e.preventDefault();
+  await fetch('/api/logout', { method: 'POST' });
+  location.href = '/login';
+};
+
+document.addEventListener('i18n', () => { if (me && me.role === 'admin') loadUsers(); });
+window.i18nReady.then(load);
+</script><script>
+// The logo is admin-only, like everything else that changes what other people
+// see. The section stays hidden for a viewer rather than 403-ing on click.
+(function () {
+  const $ = id => document.getElementById(id);
+  const prev = $('brandPrev'), msg = $('brandMsg'), clear = $('brandClear');
+
+  function draw(has) {
+    prev.innerHTML = '';
+    if (has) {
+      const img = document.createElement('img');
+      img.src = '/api/brand/logo?t=' + Date.now();   // defeat the cache after an upload
+      img.alt = '';
+      prev.append(img);
+      clear.classList.remove('hide');
+    } else {
+      prev.textContent = '—';
+      clear.classList.add('hide');
+    }
+  }
+
+  fetch('/api/me').then(r => r.ok ? r.json() : null).then(me => {
+    if (!me || me.role !== 'admin') return;
+    $('secBrand').classList.remove('hide');
+    draw(!!me.has_logo);
+  }).catch(() => {});
+
+  // Raw bytes, not multipart: there is one field and the server sniffs the
+  // content anyway, so a form encoding would only add a parser. The header is
+  // declared rather than left to the File object, because every write on these
+  // pages declares one — a test enforces it, after a missing Content-Type once
+  // made every login look like a wrong password.
+  async function upload(f) {
+    if (!f) return;
+    msg.textContent = '';
+    const res = await fetch('/api/brand/logo', {
+      method: 'POST',
+      headers: { 'Content-Type': f.type || 'application/octet-stream' },
+      body: f,
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { msg.textContent = d.error || ('HTTP ' + res.status); return; }
+    $('brandFile').value = '';
+    // Say something on success too. A silent success and a silent failure look
+    // identical, and this one has a preview that only changes if it worked.
+    msg.textContent = (f.name || 'image') + ' \u2713';
+    draw(true);
+  }
+
+  $('brandPick').onclick = () => $('brandFile').click();
+  $('brandFile').onchange = () => upload($('brandFile').files[0]);
+
+  // Dropping the file is the way past the file dialog rather than a shortcut
+  // around it. The dialog has no image filter — it cannot have one that is
+  // guaranteed not to hide the file you came for — so it lists everything, and
+  // on a crowded desktop that is a lot to scroll. Dragging the logo in skips
+  // the whole question, and so does pasting one from the clipboard.
+  const drop = $('brandDrop');
+  ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => {
+    ev.preventDefault();
+    drop.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => {
+    ev.preventDefault();
+    drop.classList.remove('over');
+  }));
+  drop.addEventListener('drop', ev => {
+    const dt = ev.dataTransfer;
+    if (dt && dt.files && dt.files.length) upload(dt.files[0]);
+  });
+  document.addEventListener('paste', ev => {
+    if ($('secBrand').classList.contains('hide')) return;
+    for (const it of (ev.clipboardData ? ev.clipboardData.items : [])) {
+      if (it.kind === 'file') { upload(it.getAsFile()); return; }
+    }
+  });
+
+  clear.onclick = async () => {
+    const res = await fetch('/api/brand/logo', { method: 'DELETE' });
+    if (res.ok) { draw(false); msg.textContent = ''; }
+  };
+})();
+</script>
+</body></html>
