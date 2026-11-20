@@ -77,6 +77,10 @@ Off by default. Start with `--zabbix` and a token of 16+ characters in `PINGPING
 
 **Before restarting a service**, `pingping check` with the same flags says whether it would start and why not (flags, token, data directory, database, port), without touching the running one. Every start logs a short security summary; anything exposed is marked `!`.
 
+### HTTP API
+
+The console, the tray icon and the Zabbix template all use one JSON API: [docs/API.md](docs/API.md) · OpenAPI 3.1: [docs/openapi.yaml](docs/openapi.yaml).
+
 ### No ads, no outbound requests
 
 pingping has no advertising and makes no requests of its own beyond the probes you configure.

@@ -1,0 +1,10 @@
+{
+  "name": "pingping-browser-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
