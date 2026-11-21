@@ -1,4 +1,7 @@
-# pingping
+<p align="center">
+    <img src="docs/brand/pingping-logo-strip-onlight.png#gh-light-mode-only" alt="pingping" width="520">
+    <img src="docs/brand/pingping-logo-strip-ondark.png#gh-dark-mode-only" alt="pingping" width="520">
+</p>
 
 > A modern, lightweight, and cross-platform SmokePing alternative.
 
