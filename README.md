@@ -8,9 +8,9 @@
 >
 > *🚫 No Perl. No RRDtool. No web server. No config files.*
 
-<img width="1280" height="720" alt="pingping — latency and packet loss charts for Windows, Linux and macOS" src="https://github.com/user-attachments/assets/550355e8-1c45-4c4f-a667-ee54dc08cac9" />
+![pingping in action — quick start, the first screen, the smoke graph, settings and targets](docs/images/pingping-hero.gif)
 
-![pingping latency graph with an example corporate logo (Acme Networks)](docs/images/pingping-graph.png)
+![pingping latency graph — one target's median line over every raw sample](docs/images/pingping-graph.png)
 ![pingping settings: accounts, console port and custom logo](docs/images/pingping-settings.png)
 ![pingping target list](docs/images/pingping-targets.png)
 
@@ -19,7 +19,7 @@
 **Step 1 — download and start it** (Linux x86-64, one command):
 
 ```bash
-mkdir -p ~/pingping && cd ~/pingping && curl -LO https://github.com/githubflyideas/pingping/releases/download/v0.7.12/pingping-linux-amd64 && mv pingping-linux-amd64 pingping && chmod +x pingping && ./pingping
+mkdir -p ~/pingping && cd ~/pingping && curl -LO https://github.com/githubflyideas/pingping/releases/download/v0.7.13/pingping-linux-amd64 && mv pingping-linux-amd64 pingping && chmod +x pingping && ./pingping
 ```
 
 **Step 2 — open it.** Go to <http://localhost:8518>. The first screen
@@ -34,13 +34,13 @@ a host name or IP, watched by ping, TCP or HTTP. Everything — targets,
 accounts, the password — is changed in the console, while it runs.
 
 **Windows:** download
-[pingping-0.7.12-setup.exe](https://github.com/githubflyideas/pingping/releases/download/v0.7.12/pingping-0.7.12-setup.exe)
+[pingping-0.7.13-setup.exe](https://github.com/githubflyideas/pingping/releases/download/v0.7.13/pingping-0.7.13-setup.exe)
 and run it. It asks for a port (8518 is fine), installs pingping as a
 service, and opens the console in your browser at the end — the same
 first screen, create the admin account. A tray icon shows the status.
 
 **macOS (Apple silicon):** download
-[pingping-darwin-arm64](https://github.com/githubflyideas/pingping/releases/download/v0.7.12/pingping-darwin-arm64),
+[pingping-darwin-arm64](https://github.com/githubflyideas/pingping/releases/download/v0.7.13/pingping-darwin-arm64),
 then `chmod +x pingping-darwin-arm64` and run it — same steps as Linux.
 
 ## Going live
