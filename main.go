@@ -32,7 +32,7 @@ type options struct {
 
 func main() {
 	log.SetFlags(log.LstdFlags)
-	args := os.Args[1:]
+	args := aliasArgs(os.Args[1:])
 
 	// Subcommands come before flag parsing, so `pingping install --port 9000`
 	// reads the way a Windows admin expects rather than the way Go's flag package
@@ -129,6 +129,25 @@ func main() {
 	if err := serveForeground(opt); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// aliasArgs accepts the flag spellings fogping and vrf-ping use for the same
+// two operations — --check and --gen-token=FILE — so the family's commands
+// read the same whichever binary is in front of you. Only the first argument
+// is translated; everything after it is untouched.
+func aliasArgs(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+	switch {
+	case args[0] == "--check":
+		return append([]string{"check"}, args[1:]...)
+	case args[0] == "--gen-token":
+		return append([]string{"gen-token"}, args[1:]...)
+	case strings.HasPrefix(args[0], "--gen-token="):
+		return append([]string{"gen-token", strings.TrimPrefix(args[0], "--gen-token=")}, args[1:]...)
+	}
+	return args
 }
 
 func parseOptions(args []string) (options, error) {

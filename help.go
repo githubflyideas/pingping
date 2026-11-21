@@ -31,6 +31,9 @@ COMMANDS
   version          print the version
   help             this text
 
+  Also accepted: --check for check, and --gen-token=FILE (or --gen-token FILE)
+  for gen-token — the fogping / vrf-ping spellings.
+
 FLAGS
   --port N         console port (default 8518)
   --localhost      {{LOCALHOSTDESC}}
